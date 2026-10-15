@@ -156,6 +156,17 @@ out:
     for before, after in replacements:
         replace_once(wrapper, before, after)
 
+    # Collect all diagnostics before failing, retaining the warning gate.
+    replace_once(wrapper, 'ofile = None', 'ofile = None\nforbidden_warning = False')
+    replace_once(wrapper, '        sys.exit(1)',
+                 '        global forbidden_warning\n        forbidden_warning = True')
+    replace_once(wrapper, '        result = proc.wait()',
+                 '        result = proc.wait()\n'
+                 '        if forbidden_warning:\n'
+                 '            if ofile and os.path.exists(ofile):\n'
+                 '                os.remove(ofile)\n'
+                 '            result = 1')
+
     # Minimal fixes for this builtin snapshot on pre-5.10 kernels.
     compat = target / "infra/kernel_compat.h"
     text = compat.read_text(encoding="utf-8")
@@ -176,6 +187,10 @@ out:
     replace_once(target / "supercall/dispatch.c",
                  'ksu_strncpy_from_user_nofault(mnt, cmd.arg, sizeof(mnt))',
                  'ksu_strncpy_from_user_nofault(mnt, (const void __user *)(unsigned long)cmd.arg, sizeof(mnt))')
+
+    replace_once(target / "supercall/dispatch.c",
+                 'struct ksu_get_full_version_cmd cmd = { 0 };',
+                 'struct ksu_get_full_version_cmd cmd = { .version_full = { 0 } };')
 
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
