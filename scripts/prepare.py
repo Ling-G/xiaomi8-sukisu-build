@@ -196,11 +196,16 @@ out:
     replace_once(target / "supercall/dispatch.c",
                  'struct ksu_hook_type_cmd cmd = { 0 };',
                  'struct ksu_hook_type_cmd cmd = { .hook_type = { 0 } };')
-    for call in ('ksu_selinux_hide_handle_post_fs_data();',
-                 'ksu_selinux_hide_handle_second_stage();'):
-        replace_once(target / "runtime/ksud.c", call,
-                     '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
-                     + call + '\n#endif')
+    runtime = target / "runtime/ksud.c"
+    text = runtime.read_text(encoding="utf-8")
+    for call, expected_count in (('ksu_selinux_hide_handle_post_fs_data();', 1),
+                                 ('ksu_selinux_hide_handle_second_stage();', 2)):
+        if text.count(call) != expected_count:
+            raise RuntimeError("Unexpected SELinux hide call sites")
+        text = text.replace(call,
+                            '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
+                            + call + '\n#endif')
+    runtime.write_text(text, encoding="utf-8", newline="\n")
     replace_once(target / "sulog/event.c",
                  '#define USER_ARG_NULL user_arg_null_ptr()',
                  '#ifdef CONFIG_KSU_SUSFS\n'
