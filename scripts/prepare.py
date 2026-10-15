@@ -205,6 +205,15 @@ out:
         text = text.replace(call,
                             '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
                             + call + '\n#endif')
+    # Discover the already installed manager at boot, even when packages.list
+    # has not changed. Signature verification stays in search_manager().
+    if text.count("track_throne(true);") != 1:
+        raise RuntimeError("Unexpected boot manager scan interface")
+    text = text.replace("track_throne(true);", "track_throne(false);")
+    if text.count("    ksu_observer_init();") != 1:
+        raise RuntimeError("Unexpected post-fs-data observer initialization")
+    text = text.replace("    ksu_observer_init();",
+                        "    ksu_observer_init();\n    track_throne(false);")
     runtime.write_text(text, encoding="utf-8", newline="\n")
     replace_once(target / "sulog/event.c",
                  '#define USER_ARG_NULL user_arg_null_ptr()',

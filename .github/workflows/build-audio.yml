@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/build-audio.yml'
       - 'scripts/build-audio.sh'
+      - 'scripts/prepare.py'
 permissions:
   contents: read
 concurrency:
