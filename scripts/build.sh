@@ -28,7 +28,7 @@ python3 "$ROOT/scripts/prepare.py" "$WORK/kernel" "$WORK/sukisu"
 cp "$ROOT/stock/stock.config" "$OUT/.config"
 cd "$WORK/kernel"
 scripts/config --file "$OUT/.config" --enable KSU --disable KPM --disable KSU_SUSFS --disable KSU_DEBUG --disable KSU_FEATURE_ADBROOT --disable LOCALVERSION_AUTO --set-str LOCALVERSION '-perf-g10af704'
-export ARCH=arm64 SUBARCH=arm64
+export ARCH=arm64 SUBARCH=arm64 LOCALVERSION=
 export CROSS_COMPILE="$WORK/gcc64/bin/aarch64-linux-android-"
 export CROSS_COMPILE_ARM32="$WORK/gcc32/bin/arm-linux-androideabi-"
 export KBUILD_BUILD_USER=dipper-builder KBUILD_BUILD_HOST=github-actions
@@ -38,6 +38,10 @@ make O="$OUT" HOSTCFLAGS='-O2 -fcommon' olddefconfig
 grep -qx 'CONFIG_KSU=y' "$OUT/.config"
 grep -qx '# CONFIG_KPM is not set' "$OUT/.config"
 grep -qx '# CONFIG_KSU_SUSFS is not set' "$OUT/.config"
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" prepare scripts
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' init/version.o
+# Check the integration object first so compatibility errors fail quickly.
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' drivers/kernelsu/ksu.o
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" Image.gz
 cp "$OUT/arch/arm64/boot/Image.gz" "$ART/Image.gz"
 cp "$OUT/.config" "$ART/kernel.config"
