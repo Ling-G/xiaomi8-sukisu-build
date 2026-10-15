@@ -38,6 +38,7 @@ KSU_VERSION_FULL := builtin-2d1de629-dipper-port
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 ccflags-y += -DKSU_VERSION_FULL=\\"$(KSU_VERSION_FULL)\\"
 ''' + text[b:]
+    text = text.replace(" -Wno-gcc-compat", "").replace(" -Wno-int-conversion", "")
     mf.write_text(text, encoding="utf-8", newline="\n")
     inc = target / "kernel_includes.h"
     text = inc.read_text(encoding="utf-8")
@@ -191,6 +192,27 @@ out:
     replace_once(target / "supercall/dispatch.c",
                  'struct ksu_get_full_version_cmd cmd = { 0 };',
                  'struct ksu_get_full_version_cmd cmd = { .version_full = { 0 } };')
+
+    replace_once(target / "supercall/dispatch.c",
+                 'struct ksu_hook_type_cmd cmd = { 0 };',
+                 'struct ksu_hook_type_cmd cmd = { .hook_type = { 0 } };')
+    for call in ('ksu_selinux_hide_handle_post_fs_data();',
+                 'ksu_selinux_hide_handle_second_stage();'):
+        replace_once(target / "runtime/ksud.c", call,
+                     '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
+                     + call + '\n#endif')
+    replace_once(target / "sulog/event.c",
+                 '#define USER_ARG_NULL user_arg_null_ptr()',
+                 '#ifdef CONFIG_KSU_SUSFS\n'
+                 '    #define USER_ARG_NULL user_arg_null_ptr()\n'
+                 '#else\n'
+                 '    #define USER_ARG_NULL (*user_arg_null_ptr())\n'
+                 '#endif')
+    replace_once(target / "selinux/rules.c",
+                 'void apply_kernelsu_rules(void)\n{\n    struct selinux_policy *pol, *old_pol;',
+                 'void apply_kernelsu_rules(void)\n{\n'
+                 '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
+                 '    struct selinux_policy *pol, *old_pol;\n#endif')
 
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
