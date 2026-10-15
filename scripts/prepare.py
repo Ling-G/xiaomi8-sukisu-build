@@ -156,6 +156,27 @@ out:
     for before, after in replacements:
         replace_once(wrapper, before, after)
 
+    # Minimal fixes for this builtin snapshot on pre-5.10 kernels.
+    compat = target / "infra/kernel_compat.h"
+    text = compat.read_text(encoding="utf-8")
+    text += "\n#ifndef fallthrough\n#define fallthrough do { } while (0)\n#endif\n"
+    compat.write_text(text, encoding="utf-8", newline="\n")
+    replace_once(target / "policy/feature.c",
+                 '    [KSU_FEATURE_SELINUX_HIDE] = "selinux_hide",',
+                 '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
+                 '    [KSU_FEATURE_SELINUX_HIDE] = "selinux_hide",\n#endif')
+    observer = target / "manager/pkg_observer.c"
+    text = observer.read_text(encoding="utf-8")
+    if text.count("track_throne(TRACK_THRONE_FORCE_SYNCHRONOUS)") != 2:
+        raise RuntimeError("Unexpected package observer interface")
+    # This branch's track_throne(bool prune_only) already runs synchronously;
+    # false requests the full manager scan instead of pruning alone.
+    text = text.replace("track_throne(TRACK_THRONE_FORCE_SYNCHRONOUS)", "track_throne(false)")
+    observer.write_text(text, encoding="utf-8", newline="\n")
+    replace_once(target / "supercall/dispatch.c",
+                 'ksu_strncpy_from_user_nofault(mnt, cmd.arg, sizeof(mnt))',
+                 'ksu_strncpy_from_user_nofault(mnt, (const void __user *)(unsigned long)cmd.arg, sizeof(mnt))')
+
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
               "manager": "SukiSU v4.2.0 40900 (UAPI 2; runtime unverified)",
