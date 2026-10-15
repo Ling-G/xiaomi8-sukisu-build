@@ -40,6 +40,7 @@ grep -qx '# CONFIG_KPM is not set' "$OUT/.config"
 grep -qx '# CONFIG_KSU_SUSFS is not set' "$OUT/.config"
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" prepare scripts
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' init/version.o
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" security/selinux/
 # Check the integration object first so compatibility errors fail quickly.
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' drivers/kernelsu/ksu.o
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" Image.gz
