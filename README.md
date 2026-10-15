@@ -38,3 +38,5 @@ python scripts/repack.py /path/to/original/boot.img /path/to/Image.gz /path/to/b
 ```
 
 The script checks the exact stock SHA256, preserves the stock ramdisk and appended DTBs, updates the header checksum, and omits the invalidated original AVB1 signature. An unlocked bootloader is required to test this modified image. It never uploads the stock image or flashes the device.
+
+Before repacking, run python scripts/verify.py /path/to/artifacts to check embedded kernel version, required SukiSU integration symbols, feature configuration, and SHA256 manifests. Optional SELinux hiding is unavailable on this 4.9 port; normal SELinux policy integration remains enabled.
