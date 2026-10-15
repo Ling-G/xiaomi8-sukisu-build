@@ -40,3 +40,7 @@ python scripts/repack.py /path/to/original/boot.img /path/to/Image.gz /path/to/b
 The script checks the exact stock SHA256, preserves the stock ramdisk and appended DTBs, updates the header checksum, and omits the invalidated original AVB1 signature. An unlocked bootloader is required to test this modified image. It never uploads the stock image or flashes the device.
 
 Before repacking, run python scripts/verify.py /path/to/artifacts to check embedded kernel version, required SukiSU integration symbols, feature configuration, and SHA256 manifests. Optional SELinux hiding is unavailable on this 4.9 port; normal SELinux policy integration remains enabled.
+
+## Verified build
+
+[Run #8](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38705602226) completed successfully from build commit e5529baed0c2e1b610cec71ac601e819b5f3047f. The downloaded Image.gz checksum is d224e44ff22fe75b0717dbe3c0548953d804c80f6e470250808c9cbd7a73399d. Embedded release, SukiSU marker, required hook symbols and artifact checksums passed local checks. A boot image was repacked locally with the original ramdisk and DTBs preserved byte for byte. The repacked boot image is not uploaded to this repository. Device boot, Root authorization, modules and hardware remain untested.
