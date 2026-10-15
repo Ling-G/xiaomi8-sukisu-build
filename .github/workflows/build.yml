@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - '.github/workflows/build.yml'
-      - 'scripts/**'
+      - 'scripts/build.sh'
+      - 'scripts/prepare.py'
       - 'stock/stock.config'
       - 'pins.json'
 permissions:

@@ -137,6 +137,25 @@ out:
 '''
     replace_once(file, anchor, wrapper + anchor)
 
+    # Port the compiler warning checker to Python 3 without changing its policy.
+    wrapper = kernel / "scripts/gcc-wrapper.py"
+    replacements = [
+        ("#! /usr/bin/env python2", "#! /usr/bin/env python3"),
+        ('print >> sys.stderr, "error, forbidden warning:", m.group(2)',
+         'print("error, forbidden warning:", m.group(2), file=sys.stderr)'),
+        ('subprocess.Popen(args, stderr=subprocess.PIPE)',
+         'subprocess.Popen(args, stderr=subprocess.PIPE, universal_newlines=True)'),
+        ('print >> sys.stderr, line,', 'print(line, end="", file=sys.stderr)'),
+        ("print >> sys.stderr, args[0] + ':',e.strerror",
+         "print(args[0] + ':', e.strerror, file=sys.stderr)"),
+        ("print >> sys.stderr, 'Is your PATH set correctly?'",
+         "print('Is your PATH set correctly?', file=sys.stderr)"),
+        ("print >> sys.stderr, ' '.join(args), str(e)",
+         "print(' '.join(args), str(e), file=sys.stderr)"),
+    ]
+    for before, after in replacements:
+        replace_once(wrapper, before, after)
+
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
               "manager": "SukiSU v4.2.0 40900 (UAPI 2; runtime unverified)",

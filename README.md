@@ -28,3 +28,13 @@ The public Xiaomi source commit differs from the original boot kernel's g10af704
 scripts/prepare.py applies checked manual hooks to fs/exec.c, fs/open.c, fs/stat.c, fs/read_write.c and kernel/reboot.c, and backports path_umount using the target kernel's permission checks and reference-release behavior. SukiSU supplies its own LSM and input-handler registrations.
 
 Scripts in this repository are GPL-2.0-only. Upstream source licensing remains with each upstream project. Full upstream source and pinned revisions remain publicly available at the linked repositories.
+
+## Local boot repack
+
+After downloading a successful Image.gz artifact, run:
+
+```text
+python scripts/repack.py /path/to/original/boot.img /path/to/Image.gz /path/to/boot-sukisu.img
+```
+
+The script checks the exact stock SHA256, preserves the stock ramdisk and appended DTBs, updates the header checksum, and omits the invalidated original AVB1 signature. An unlocked bootloader is required to test this modified image. It never uploads the stock image or flashes the device.
