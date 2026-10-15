@@ -39,6 +39,16 @@ grep -qx 'CONFIG_KSU=y' "$OUT/.config"
 grep -qx '# CONFIG_KPM is not set' "$OUT/.config"
 grep -qx '# CONFIG_KSU_SUSFS is not set' "$OUT/.config"
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" prepare scripts
+# Reject missing module CRCs before producing another test image.
+printf 'int diagnostic_symbol; EXPORT_SYMBOL(diagnostic_symbol);\n' | "$OUT/scripts/genksyms/genksyms"
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' V=1 kernel/module.o
+"$CROSS_COMPILE"nm "$OUT/kernel/module.o" | grep -E 'crc_module_layout|ksymtab_module_layout' || true
+make O="$OUT" HOSTCFLAGS='-O2 -fcommon' V=1 kernel/module.symtypes
+cat "$OUT/kernel/module.symtypes" | tail -n 5 || true
+if ! "$CROSS_COMPILE"nm "$OUT/kernel/module.o" | grep -E ' [Aa] __crc_module_layout$'; then
+    echo 'ERROR: module_layout CRC was not generated; stopping before full build.' >&2
+    exit 1
+fi
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' init/version.o
 make O="$OUT" HOSTCFLAGS='-O2 -fcommon' -j"$(nproc)" security/selinux/
 # Check the integration object first so compatibility errors fail quickly.
