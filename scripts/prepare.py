@@ -228,6 +228,131 @@ out:
                  '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n'
                  '    struct selinux_policy *pol, *old_pol;\n#endif')
 
+    # Linux 4.9 fscrypt needs init's session keyring even in init task_work
+    # and package-observer tasks running under override_creds(ksu_cred).
+    replace_once(compat, r'''static int install_session_keyring(struct key *keyring)
+{
+    struct cred *new;
+    int ret;
+
+    new = prepare_creds();
+    if (!new)
+        return -ENOMEM;
+
+    ret = install_session_keyring_to_cred(new, keyring);
+    if (ret < 0) {
+        abort_creds(new);
+        return ret;
+    }
+
+    return commit_creds(new);
+}
+
+struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
+{
+    if (init_session_keyring != NULL && !current_cred()->session_keyring && (current->flags & PF_WQ_WORKER)) {
+        pr_info("installing init session keyring for older kernel\n");
+        install_session_keyring(init_session_keyring);
+    }
+
+    return filp_open(filename, flags, mode);
+}
+''', r'''/* Old fscrypt looks up keys through the subjective credential. KSU uses
+ * override_creds(), including from init task_work, not just workqueues.
+ * Borrow init's keyring for this file access without committing credentials.
+ */
+#define KSU_COMPAT_INIT_KEYRING
+static const struct cred *ksu_begin_keyring_access(void)
+{
+    struct cred *new;
+    const struct cred *saved;
+    int ret;
+
+    if (!init_session_keyring || current_cred()->session_keyring)
+        return NULL;
+    new = prepare_creds();
+    if (!new)
+        return ERR_PTR(-ENOMEM);
+    ret = install_session_keyring_to_cred(new, init_session_keyring);
+    if (ret < 0) {
+        abort_creds(new);
+        return ERR_PTR(ret);
+    }
+    saved = override_creds(new);
+    put_cred(new);
+    return saved;
+}
+
+struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
+{
+    const struct cred *saved = ksu_begin_keyring_access();
+    struct file *file;
+
+    if (IS_ERR(saved))
+        return ERR_CAST(saved);
+    file = filp_open(filename, flags, mode);
+    if (saved)
+        revert_creds(saved);
+    return file;
+}
+''')
+    replace_once(compat, r'''static inline struct file *ksu_filp_open_nonotify(const char *path, int flags)
+{
+    struct path p;
+    struct file *f;
+    int ret;
+    ret = kern_path(path, (flags & O_NOFOLLOW) ? 0 : LOOKUP_FOLLOW, &p);
+    if (ret) {
+        return ERR_PTR(ret);
+    }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+    f = dentry_open_nonotify(&p, flags, current_cred());
+    // https://github.com/torvalds/linux/commit/765927b2d508712d320c8934db963bbe14c3fcec
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0) || defined(KSU_COMPAT_HAS_MODERN_DENTRY_OPEN)
+    f = dentry_open(&p, flags | __FMODE_NONOTIFY, current_cred());
+#else
+    f = dentry_open(p.dentry, p.mnt, flags | __FMODE_NONOTIFY, current_cred());
+#endif
+
+    path_put(&p);
+    return f;
+}
+''', '''static inline struct file *ksu_filp_open_nonotify(const char *path, int flags)
+{
+    struct path p;
+    struct file *f;
+    int ret;
+#ifdef KSU_COMPAT_INIT_KEYRING
+    const struct cred *saved = ksu_begin_keyring_access();
+    if (IS_ERR(saved))
+        return ERR_CAST(saved);
+#endif
+    ret = kern_path(path, (flags & O_NOFOLLOW) ? 0 : LOOKUP_FOLLOW, &p);
+    if (ret) {
+        f = ERR_PTR(ret);
+        goto out_cred;
+    }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+    f = dentry_open_nonotify(&p, flags, current_cred());
+    // https://github.com/torvalds/linux/commit/765927b2d508712d320c8934db963bbe14c3fcec
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0) || defined(KSU_COMPAT_HAS_MODERN_DENTRY_OPEN)
+    f = dentry_open(&p, flags | __FMODE_NONOTIFY, current_cred());
+#else
+    f = dentry_open(p.dentry, p.mnt, flags | __FMODE_NONOTIFY, current_cred());
+#endif
+
+    path_put(&p);
+out_cred:
+#ifdef KSU_COMPAT_INIT_KEYRING
+    if (saved)
+        revert_creds(saved);
+#endif
+    return f;
+}
+''')
+
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
               "manager": "SukiSU v4.2.0 40900 (UAPI 2; runtime unverified)",
