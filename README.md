@@ -93,7 +93,7 @@ python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz 
 
 APK 和提取的后台分别按固定校验值核对，不依赖可变的 latest 版本。安装器日志位于 `/data/adb/dipper-bootstrap.log`，仅记录安装或保留结果。
 
-[后台自动部署构建 #6](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38902385437)（内核提交 `193726b00e64497ba2e477ff998183fbaef37084`）已完成两次临时启动：已有后台时保留；后台与配套 `bin` 目录经备份移走后，开机约 5.7 秒自动安装完成，再进入正常 KSU `post-fs-data` 流程。常规 Root、SUSFS v2.3.0 查询和授权文件校验通过，SELinux Enforcing，原 boot 分区未改写。测试模拟了组件缺失，没有再次清空整台手机；用户已确认 MT Root 操作、SukiSU 识别、音乐/视频播放及 Wi-Fi 上网均正常，无需重新授权或手动补装后台。该后台自动安装修复版当前仅临时启动，尚未永久刷入。
+[后台自动部署构建 #6](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38902385437)（内核提交 `193726b00e64497ba2e477ff998183fbaef37084`）已完成两次临时启动：已有后台时保留；后台与配套 `bin` 目录经备份移走后，开机约 5.7 秒自动安装完成，再进入正常 KSU `post-fs-data` 流程。常规 Root、SUSFS v2.3.0 查询和授权文件校验通过，SELinux Enforcing，原 boot 分区未改写。测试模拟了组件缺失，没有再次清空整台手机；用户已确认 MT Root 操作、SukiSU 识别、音乐/视频播放及 Wi-Fi 上网均正常，无需重新授权或手动补装后台。上述验证最初使用临时启动；用户后续在旧版完成首次初始化后刷入自动安装版并正常启动，但全量刷机后的直接首次启动失败，见本节已知问题。
 
 ## 本地封装与临时启动
 
