@@ -33,11 +33,12 @@ def prepare(k,w):
     replace_once(k/'drivers/staging/Kconfig','endif # STAGING',
                  'source "drivers/staging/qcacld-3.0/Kconfig"\n\nendif # STAGING')
     # Native builtin WLAN mode waits for boot_wlan after filesystem setup.
-    # Android init performs this write; it does not load any .ko or run ksud.
+    # Android init uses the existing KSU domain to write only this trigger.
+    # No policy relaxation, external module or ksud invocation is required.
     p=k/'drivers/kernelsu/runtime/ksud.c'
     for event in ['on nonencrypted','on property:vold.decrypt=trigger_restart_framework']:
         old='    "'+event+'\\n"\n'
-        new=old+'    "    write /sys/kernel/boot_wlan/boot_wlan 1\\n"\n'
+        new=old+'    '+json.dumps('    exec u:r:ksu:s0 root -- /system/bin/sh -c "echo 1 > /sys/kernel/boot_wlan/boot_wlan"\n')+'\n'
         replace_once(p,old,new)
     report={'audio_builtin_options':modular,'wifi':'CONFIG_QCA_CLD_WLAN=y',
             'wifi_start':'Android init boot_wlan trigger after filesystem setup',
