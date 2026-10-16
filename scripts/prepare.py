@@ -353,6 +353,31 @@ out_cred:
 }
 ''')
 
+    # Keep the exact init -> ksud transition active after the early boot hook
+    # is stopped by zygote. No other executable or caller is admitted.
+    replace_once(target / "feature/sucompat.c", r'''    if (unlikely(ksu_execveat_hook)) {
+        return ksu_handle_execveat_ksud(fd, filename_ptr, argv, envp, flags);
+    }''', r'''    /* init also executes ksud after the early exec hook has stopped. */
+    if (current->pid != 1 && current_uid().val == 0 &&
+        is_init(get_current_cred()) && filename_ptr &&
+        !IS_ERR_OR_NULL(*filename_ptr) &&
+        !strcmp((*filename_ptr)->name, KSUD_PATH)) {
+        pr_info("init daemon exec: pid=%d\n", current->pid);
+        escape_to_root_for_init();
+    }
+
+    if (unlikely(ksu_execveat_hook)) {
+        return ksu_handle_execveat_ksud(fd, filename_ptr, argv, envp, flags);
+    }''')
+    replace_once(target / "runtime/ksud.c", r'''    if (current->pid != 1 && is_init(get_current_cred())) {
+        if (unlikely(strcmp(filename->name, KSUD_PATH) == 0)) {
+            pr_info("ksud: escape to root for init executing ksud: %d\n", current->pid);
+            escape_to_root_for_init();
+        }
+    }
+
+''', '')
+
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
               "manager": "SukiSU v4.2.0 40900 (UAPI 2; runtime unverified)",
