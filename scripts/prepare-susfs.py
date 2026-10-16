@@ -25,6 +25,35 @@ def prepare(k,s):
  p.write_text(t[:a]+body+t[b:])
  replace(k/'fs/namei.c','res = susfs_open_redirect_spoof_vfs_readlink(inode, buffer, buflen);\n\t\tif (!res)', 'res = susfs_open_redirect_spoof_vfs_readlink(inode, buffer, buflen);\n\t\tif (res >= 0)')
  replace(k/'drivers/kernelsu/Makefile','KSU_VERSION_FULL := builtin-2d1de629-dipper-port','KSU_VERSION_FULL := builtin-2d1de629-dipper-port-susfs2.3.0')
+ # The SUSFS-only logging branch needs the same 4.9 compatibility wrappers.
+ p=k/'drivers/kernelsu/sulog/event.c';t=p.read_text();a=t.index('static __u32 ksu_sulog_copy_filename_kernel(');b=t.index('static __u32 ksu_sulog_flatten_argv(',a)
+ t=t[:a]+'''static __u32 ksu_sulog_copy_filename_kernel(const char *filename, char *dst, __u32 dst_len)
+{
+    size_t len;
+    if (!dst_len)
+        return 0;
+    if (!filename)
+        return ksu_sulog_copy_empty_string(dst);
+    len = strnlen(filename, dst_len - 1);
+    memcpy(dst, filename, len);
+    dst[len] = '\\0';
+    return len + 1;
+}
+
+'''+t[b:]
+ assert t.count('            strncpy_from_user_nofault(')==1
+ t=t.replace('            strncpy_from_user_nofault(', '            ksu_strncpy_from_user_nofault(');p.write_text(t)
+ p=k/'drivers/kernelsu/selinux/selinux.c';t=p.read_text();a=t.index('#ifdef CONFIG_KSU_SUSFS\n#define KERNEL_INIT_DOMAIN');prefix,body=t[:a],t[a:]
+ assert body.count('current_sid()')==5
+ body=body.replace('current_sid()', 'ksu_susfs_current_sid_compat()')
+ helper='''#ifdef CONFIG_KSU_SUSFS
+static inline u32 ksu_susfs_current_sid_compat(void)
+{
+    const struct task_security_struct *tsec = selinux_cred(current_cred());
+    return tsec ? tsec->sid : 0;
+}
+'''
+ body=body.replace('#ifdef CONFIG_KSU_SUSFS',helper,1);p.write_text(prefix+body)
  p=k/'integration.json';r=json.loads(p.read_text());r['features']['susfs']=True;r['susfs']={'repository':'https://github.com/wxx9248/susfs4ksu','ref':'71345ded5af28f55d76ebcdc7a9df9cea56111e1','version':'v2.3.0','patch':'scripts/patches/susfs-4.9-dipper.patch','status':'experimental; runtime validation pending'};p.write_text(json.dumps(r,indent=2)+'\n')
  print('SUSFS v2.3.0 dipper source integration applied')
 

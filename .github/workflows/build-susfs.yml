@@ -6,6 +6,7 @@ on:
       - '.github/workflows/build-susfs.yml'
       - 'scripts/build-susfs.sh'
       - 'scripts/prepare-susfs.py'
+      - 'scripts/susfs-query.c'
       - 'scripts/patches/susfs-4.9-dipper.patch'
 permissions:
   contents: read
