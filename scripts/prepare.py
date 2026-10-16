@@ -391,6 +391,10 @@ out_cred:
     replace_once(target / "runtime/ksud.c", '    "    start logd\\n"',
                  '    "    exec u:r:ksu:s0 root -- /system/bin/sh -c \\"if [ -f /dev/dipper-bootstrap.sh ]; then /system/bin/sh /dev/dipper-bootstrap.sh; fi\\"\\n"\n'
                  '    "    start logd\\n"')
+    replace_once(target / "runtime/ksud.c",
+                 '    "on property:sys.boot_completed=1\\n"',
+                 '    "on property:sys.boot_completed=1\\n"\n'
+                 '    "    exec u:r:ksu:s0 root -- /system/bin/sh -c \\"if [ -f /dev/dipper-bootstrap.sh ]; then /system/bin/sh /dev/dipper-bootstrap.sh --late; fi\\"\\n"')
 
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",

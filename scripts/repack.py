@@ -53,8 +53,9 @@ def repack(stock_path, kernel_path, output_path, ksud_path=None):
         raise ValueError("Truncated stock ramdisk")
     stock_ramdisk = ramdisk
     if ksud_path is not None:
-        if b"dipper bootstrap: retained %s" not in kernel_image:
-            raise ValueError("Kernel lacks the dipper SAR bootstrap handoff; rebuild with the updated sources")
+        if (b"dipper bootstrap: retained %s" not in kernel_image or
+                b"/dev/dipper-bootstrap.sh --late" not in kernel_image):
+            raise ValueError("Kernel lacks the late-install dipper SAR bootstrap handoff; rebuild with the updated sources")
         from bootstrap_ramdisk import add_bootstrap
         ramdisk = add_bootstrap(ramdisk, ksud_path)
     digest = hashlib.sha1()
