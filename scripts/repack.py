@@ -24,7 +24,7 @@ def split_gzip(data):
         raise ValueError("Kernel is not an ARM64 Image")
     return image, data[:len(data)-len(dec.unused_data)], dec.unused_data
 
-def repack(stock_path, kernel_path, output_path):
+def repack(stock_path, kernel_path, output_path, ksud_path=None):
     if output_path.resolve() in {stock_path.resolve(), kernel_path.resolve()}:
         raise ValueError("Output must not overwrite an input")
     if output_path.exists():
@@ -51,11 +51,16 @@ def repack(stock_path, kernel_path, output_path):
     ramdisk = stock[ramdisk_offset:ramdisk_offset+ramdisk_size]
     if len(ramdisk) != ramdisk_size:
         raise ValueError("Truncated stock ramdisk")
+    stock_ramdisk = ramdisk
+    if ksud_path is not None:
+        from bootstrap_ramdisk import add_bootstrap
+        ramdisk = add_bootstrap(ramdisk, ksud_path)
     digest = hashlib.sha1()
     for data in (new_kernel, ramdisk, b"", b""):
         digest.update(data)
         digest.update(struct.pack("<I", len(data)))
     struct.pack_into("<I", header, 8, len(new_kernel))
+    struct.pack_into("<I", header, 16, len(ramdisk))
     header[576:608] = digest.digest() + bytes(12)
     result = bytes(header)
     for data in (new_kernel, ramdisk):
@@ -71,7 +76,9 @@ def repack(stock_path, kernel_path, output_path):
         "stock_sha256": STOCK_SHA256,
         "kernel_gzip_sha256": hashlib.sha256(new_gzip).hexdigest(),
         "stock_dtbs_sha256": hashlib.sha256(dtbs).hexdigest(),
-        "stock_ramdisk_sha256": hashlib.sha256(ramdisk).hexdigest(),
+        "stock_ramdisk_sha256": hashlib.sha256(stock_ramdisk).hexdigest(),
+        "ramdisk_sha256": hashlib.sha256(ramdisk).hexdigest(),
+        "backend_bootstrap": ksud_path is not None,
         "boot_header": 1,
         "signature": "Original AVB1 signature omitted; unlocked bootloader required",
         "device_validation": "Not performed; compilation/repacking alone does not confirm boot or Root",
@@ -84,5 +91,6 @@ if __name__ == "__main__":
     p.add_argument("stock_boot", type=Path)
     p.add_argument("kernel_gzip", type=Path)
     p.add_argument("output", type=Path)
+    p.add_argument("--ksud", type=Path, help="Embed verified official 4.2.0 backend and first-boot installer")
     a = p.parse_args()
-    repack(a.stock_boot, a.kernel_gzip, a.output)
+    repack(a.stock_boot, a.kernel_gzip, a.output, a.ksud)

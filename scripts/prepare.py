@@ -378,6 +378,20 @@ out_cred:
 
 ''', '')
 
+    # Android Q discards the first-stage ramdisk. Retain only the two optional
+    # boot-owned resources and publish them to /dev before parsing KSU actions.
+    shutil.copyfile(Path(__file__).with_name("bootstrap-kernel.c"),
+                    target / "runtime/dipper_bootstrap.c")
+    replace_once(target / "ksu.c", '#include "runtime/ksud.c"',
+                 '#include "runtime/dipper_bootstrap.c"\n#include "runtime/ksud.c"')
+    replace_once(target / "ksu.c", '    ksu_ksud_init();',
+                 '    dipper_capture_bootstrap();\n    ksu_ksud_init();')
+    replace_once(target / "runtime/ksud.c", '    rc_hooked = true;',
+                 '    rc_hooked = true;\n    dipper_publish_bootstrap();')
+    replace_once(target / "runtime/ksud.c", '    "    start logd\\n"',
+                 '    "    exec u:r:ksu:s0 root -- /system/bin/sh -c \\"if [ -f /dev/dipper-bootstrap.sh ]; then /system/bin/sh /dev/dipper-bootstrap.sh; fi\\"\\n"\n'
+                 '    "    start logd\\n"')
+
     # Report exact source integration, independently of version display strings.
     report = {"pins": PINS, "target": "dipper / MIUI 12.5.2 Android 10",
               "manager": "SukiSU v4.2.0 40900 (UAPI 2; runtime unverified)",
