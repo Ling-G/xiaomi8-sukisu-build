@@ -69,6 +69,9 @@ static inline u32 ksu_susfs_current_sid_compat(void)
  t=t.replace("spoofed_size: '%u'", "spoofed_size: '%lld'");p.write_text(t)
  # This Xiaomi tree backports smaps_rollup; make its conditional value explicit.
  replace(k/'fs/proc/task_mmu.c','\tbool last_vma;','\tbool last_vma = false;')
+ # The builtin snapshot only initializes SUSFS SIDs in its >=5.10 branch.
+ # Resolve them after the old policy lock/stop_machine path is fully released.
+ replace(k/'drivers/kernelsu/selinux/rules.c','out_flush:\n    smp_mb();\n    reset_avc_cache();\n#endif\n}', 'out_flush:\n    smp_mb();\n    reset_avc_cache();\n#ifdef CONFIG_KSU_SUSFS\n    susfs_set_batch_sid();\n#endif\n#endif\n}')
  p=k/'integration.json';r=json.loads(p.read_text());r['features']['susfs']=True;r['susfs']={'repository':'https://github.com/wxx9248/susfs4ksu','ref':'71345ded5af28f55d76ebcdc7a9df9cea56111e1','version':'v2.3.0','patch':'scripts/patches/susfs-4.9-dipper.patch','status':'experimental; runtime validation pending'};p.write_text(json.dumps(r,indent=2)+'\n')
  print('SUSFS v2.3.0 dipper source integration applied')
 
