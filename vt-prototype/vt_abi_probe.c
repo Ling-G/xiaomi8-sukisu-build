@@ -11,7 +11,7 @@
 #include <linux/sched.h>
 #include <linux/capability.h>
 #include <linux/compat.h>
-#include <linux/build_bug.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include "vt_protocol.h"
 

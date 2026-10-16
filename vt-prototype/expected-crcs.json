@@ -25,5 +25,31 @@
     "__stack_chk_guard": "0x8f678b07",
     "misc_deregister": "0x0cf482ac",
     "kfree": "0x037a0cba"
+  },
+  "export_types": {
+    "__arch_copy_from_user": "EXPORT_SYMBOL",
+    "__rcu_read_lock": "EXPORT_SYMBOL_GPL",
+    "memset": "EXPORT_SYMBOL",
+    "__arch_copy_to_user": "EXPORT_SYMBOL",
+    "misc_register": "EXPORT_SYMBOL",
+    "__check_object_size": "EXPORT_SYMBOL",
+    "__const_udelay": "EXPORT_SYMBOL",
+    "__cpu_online_mask": "EXPORT_SYMBOL",
+    "memcpy": "EXPORT_SYMBOL",
+    "__cpu_possible_mask": "EXPORT_SYMBOL",
+    "module_layout": "EXPORT_SYMBOL",
+    "__kmalloc": "EXPORT_SYMBOL",
+    "kmalloc_caches": "EXPORT_SYMBOL",
+    "mutex_unlock": "EXPORT_SYMBOL",
+    "__task_pid_nr_ns": "EXPORT_SYMBOL",
+    "kmem_cache_alloc_trace": "EXPORT_SYMBOL",
+    "capable": "EXPORT_SYMBOL",
+    "printk": "EXPORT_SYMBOL",
+    "__rcu_read_unlock": "EXPORT_SYMBOL_GPL",
+    "__stack_chk_fail": "EXPORT_SYMBOL",
+    "mutex_lock": "EXPORT_SYMBOL",
+    "__stack_chk_guard": "EXPORT_SYMBOL",
+    "misc_deregister": "EXPORT_SYMBOL",
+    "kfree": "EXPORT_SYMBOL"
   }
 }

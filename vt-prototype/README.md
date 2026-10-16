@@ -45,7 +45,7 @@ make KDIR=/absolute/path/to/matching/kernel-out \
      ARCH=arm64 CROSS_COMPILE=/absolute/path/to/gcc64/bin/aarch64-linux-android-
 ```
 
-不能仅运行 `modules_prepare` 来替代生成匹配的 `Module.symvers`。`build-actions.sh` 已准备为 GitHub Actions 重建同一内核配置并编译原型，随后用 `verify_module.py` 核对 ELF 架构、vermagic 和所有导入符号 CRC；还会把导入 CRC 与用户提供的表格对照。构建是否通过须以实际运行结果为准。
+不能仅运行 `modules_prepare` 来生成匹配的 `Module.symvers`。本次已有用户提供的权威符号表：`build-actions.sh` 沿用固定版本的内核集成脚本，准备与手机完全相同配置的头文件和构建工具，再将所需符号的 CRC 子集交给 modpost 编译外部模块。随后用 `verify_module.py` 核对 ELF 架构、vermagic 和所有导入符号 CRC；每个导入也必须存在于用户提供的表格记录中。子集不是完整内核符号表，构建是否通过须以实际运行结果为准。
 
 `probe_client.py` 是构建并另行审核后才使用的接口测试程序，覆盖自身内存读写、目标进程限制、长度上限和错误命令。它尚未执行，不会自动安装模块。
 
