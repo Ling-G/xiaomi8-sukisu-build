@@ -70,9 +70,27 @@ Wi-Fi 的原生内置模式仍需要在文件系统就绪后触发 `/sys/kernel/
 
 测试环境使用官方 **4.2.1 管理器**与匹配 UAPI 2 的官方 **4.2.0 后台组件 `ksud`**。4.2.0 管理器在该 Android 10 环境曾出现白屏；4.2.1 管理器可正常识别和授权，但其要求的 UAPI 5 与当前内核不同，因此仍可能提示更新内核。该提示不代表本项目已实现 UAPI 5。
 
-驱动内置后，SukiSU 后台仍负责授权持久化及模块生命周期等功能。当前测试手机已部署匹配的 `/data/adb/ksud`；仅启动本仓库编译的内核，不会自动完成所有后台安装。清空 userdata 后的实机检查发现：安装 4.2.1 管理器并保存超级用户授权，并未自动生成 `/data/adb/ksud`；此时 `su` 入口虽然可见，执行仍会报文件不存在。使用匹配的官方 4.2.0 `ksud` 通过已授权 Shell 的 `debug su` 接口取得 Root，执行该后台的 `install` 后，常规 `su -c id` 已恢复 UID 0，SUSFS 查询及 SELinux Enforcing 正常。当前适配仍需单独部署匹配后台，不能仅凭管理器识别内核或显示已授权判断安装完成。
+驱动内置后，SukiSU 后台仍负责授权持久化及模块生命周期等功能。当前测试手机已部署匹配的 `/data/adb/ksud`；仅启动本仓库编译的内核，不会自动完成所有后台安装。清空 userdata 后的实机检查发现：安装 4.2.1 管理器并保存超级用户授权，并未自动生成 `/data/adb/ksud`；此时 `su` 入口虽然可见，执行仍会报文件不存在。使用匹配的官方 4.2.0 `ksud` 通过已授权 Shell 的 `debug su` 接口取得 Root，执行该后台的 `install` 后，常规 `su -c id` 已恢复 UID 0，SUSFS 查询及 SELinux Enforcing 正常。此现象说明旧镜像缺少首次部署流程；新增的可选自动部署封装现已补齐该流程，见下文。
 
 [scripts/prepare.py](scripts/prepare.py) 包含手动内核 hook、旧内核 API 兼容、管理器开机扫描、旧版 fscrypt 文件访问与后台服务启动修复。稳定的基础/驱动内置版关闭 SUSFS，独立 SUSFS 实验版启用相应配置。KPM、调试模式和可选 adb-root 功能均关闭；4.9 端口不提供可选 SELinux 隐藏功能。
+
+
+### 清空数据后的后台自动部署
+
+新增可选的后台引导封装：将经过 SHA256 校验的官方 4.2.0 ARM64 `ksud` 及安装器加入 ramdisk。内核在 Android 10 切换系统根目录前保留这两个资源，读取 init 配置时交接到 `/dev`；`post-fs-data` 同步安装缺失后台，再继续原有 KSU 开机流程。原厂 first-stage `init` 文件保持原样，无需修改 system/vendor 或关闭 SELinux。
+
+已有 `/data/adb/ksud` 时保留现有版本，不覆盖后台、授权或模块配置。本功能需要同时使用支持资源交接的新内核和带 `--ksud` 封装的 boot；单独下载 `Image.gz` 不会自动带上后台。
+
+从 [官方 v4.2.0 发布页](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/tag/v4.2.0) 下载 `SukiSU_v4.2.0_40900-release.apk` 后，在本地提取后台并封装：
+
+```text
+python scripts/extract-backend.py /path/to/SukiSU_v4.2.0_40900-release.apk /path/to/ksud-4.2.0
+python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz /path/to/boot-sukisu-bootstrap.img --ksud /path/to/ksud-4.2.0
+```
+
+APK 和提取的后台分别按固定校验值核对，不依赖可变的 latest 版本。安装器日志位于 `/data/adb/dipper-bootstrap.log`，仅记录安装或保留结果。
+
+[后台自动部署构建 #6](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38902385437)（内核提交 `193726b00e64497ba2e477ff998183fbaef37084`）已完成两次临时启动：已有后台时保留；后台与配套 `bin` 目录经备份移走后，开机约 5.7 秒自动安装完成，再进入正常 KSU `post-fs-data` 流程。常规 Root、SUSFS v2.3.0 查询和授权文件校验通过，SELinux Enforcing，原 boot 分区未改写。测试模拟了组件缺失，没有再次清空整台手机；用户界面与媒体反馈待确认。
 
 ## 本地封装与临时启动
 
@@ -82,7 +100,7 @@ Wi-Fi 的原生内置模式仍需要在文件系统就绪后触发 `/sys/kernel/
 python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz /path/to/boot-sukisu.img
 ```
 
-封装脚本核对原厂镜像 SHA256，保留原厂 ramdisk 和追加的 DTB，更新镜像头校验，并移除修改后已失效的原 AVB1 签名。它不会上传镜像或操作手机分区。
+封装脚本核对原厂镜像 SHA256，保留追加的 DTB，更新镜像头校验，并移除修改后已失效的原 AVB1 签名。默认保留完整原厂 ramdisk；启用 `--ksud` 时保留原厂各 CPIO 条目和 init，额外加入固定后台及安装器。它不会上传镜像或操作手机分区。
 
 测试需要已解锁的 Bootloader。在 Fastboot 模式下使用 `fastboot boot` 临时启动。该系统测试时需通过 `--cmdline` **保留原厂完整启动参数并追加 `androidboot.mode=normal`**，避免进入充电模式。以下参数位置为占位说明，须替换为原厂实际参数：
 
