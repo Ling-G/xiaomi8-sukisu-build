@@ -1,0 +1,217 @@
+{
+  "_HW_BP_INFO": {
+    "size": 360,
+    "members": [
+      {
+        "name": "pid",
+        "offset": 0,
+        "type": "pid_t"
+      },
+      {
+        "name": "addr",
+        "offset": 8,
+        "type": "uintptr_t"
+      },
+      {
+        "name": "type",
+        "offset": 16,
+        "type": "int"
+      },
+      {
+        "name": "len",
+        "offset": 20,
+        "type": "int"
+      },
+      {
+        "name": "is_write_gp_regs",
+        "offset": 24,
+        "type": "bool"
+      },
+      {
+        "name": "gp_reg_count",
+        "offset": 28,
+        "type": "int"
+      },
+      {
+        "name": "gp_reg_indices",
+        "offset": 32,
+        "type": "int[10]"
+      },
+      {
+        "name": "gp_reg_values",
+        "offset": 72,
+        "type": "uint64_t[10]"
+      },
+      {
+        "name": "is_write_fp_regs",
+        "offset": 152,
+        "type": "bool"
+      },
+      {
+        "name": "fp_reg_count",
+        "offset": 156,
+        "type": "int"
+      },
+      {
+        "name": "fp_reg_indices",
+        "offset": 160,
+        "type": "int[10]"
+      },
+      {
+        "name": "fp_reg_values",
+        "offset": 200,
+        "type": "uint64_t[10][2]"
+      }
+    ]
+  },
+  "_HWBP_HIT_ARGS": {
+    "size": 32,
+    "members": [
+      {
+        "name": "pid",
+        "offset": 0,
+        "type": "pid_t"
+      },
+      {
+        "name": "addr",
+        "offset": 8,
+        "type": "uintptr_t"
+      },
+      {
+        "name": "out_buf",
+        "offset": 16,
+        "type": "void"
+      },
+      {
+        "name": "out_len",
+        "offset": 24,
+        "type": "int"
+      },
+      {
+        "name": "real_count",
+        "offset": 28,
+        "type": "int"
+      }
+    ]
+  },
+  "_COPY_MEMORY": {
+    "size": 32,
+    "members": [
+      {
+        "name": "pid",
+        "offset": 0,
+        "type": "pid_t"
+      },
+      {
+        "name": "addr",
+        "offset": 8,
+        "type": "uintptr_t"
+      },
+      {
+        "name": "buffer",
+        "offset": 16,
+        "type": "void"
+      },
+      {
+        "name": "size",
+        "offset": 24,
+        "type": "size_t"
+      }
+    ]
+  },
+  "_MODULE_BASE": {
+    "size": 24,
+    "members": [
+      {
+        "name": "pid",
+        "offset": 0,
+        "type": "pid_t"
+      },
+      {
+        "name": "name",
+        "offset": 8,
+        "type": "char *"
+      },
+      {
+        "name": "base",
+        "offset": 16,
+        "type": "uintptr_t"
+      }
+    ]
+  },
+  "_TRACKING_DATA": {
+    "size": 32,
+    "members": [
+      {
+        "name": "is_active",
+        "offset": 0,
+        "type": "bool"
+      },
+      {
+        "name": "bp_addr",
+        "offset": 8,
+        "type": "uintptr_t"
+      },
+      {
+        "name": "x",
+        "offset": 16,
+        "type": "float"
+      },
+      {
+        "name": "y",
+        "offset": 20,
+        "type": "float"
+      },
+      {
+        "name": "z",
+        "offset": 24,
+        "type": "float"
+      }
+    ]
+  },
+  "HWBP_HIT_ITEM": {
+    "size": 296,
+    "members": [
+      {
+        "name": "task_id",
+        "offset": 0,
+        "type": "pid_t"
+      },
+      {
+        "name": "hit_addr",
+        "offset": 8,
+        "type": "uintptr_t"
+      },
+      {
+        "name": "hit_time",
+        "offset": 16,
+        "type": "uint64_t"
+      },
+      {
+        "name": "regs_info",
+        "offset": 24,
+        "type": "REGS_INFO"
+      }
+    ]
+  },
+  "dispatch_table": {
+    "0x2813441": "0x57c",
+    "0x2813442": "0x5cc",
+    "0x2813443": "0x628",
+    "0x2813444": "0x678",
+    "0x2813445": "0x680",
+    "0x2813446": "0x6d8",
+    "0x2813447": "0x914",
+    "0x2813448": "0x914",
+    "0x2813449": "0x734",
+    "0x281344a": "0x914",
+    "0x281344b": "0x914",
+    "0x281344c": "0x914",
+    "0x281344d": "0x914",
+    "0x281344e": "0x914",
+    "0x281344f": "0x914",
+    "0x2813450": "0x790",
+    "0x2813451": "0x7f0"
+  },
+  "rodata_hex": "1000000060000000bc0000000c010000140100006c010000a8030000a8030000c8010000a8030000a8030000a8030000a8030000a8030000a803000024020000840200000000000010000000180000002000000028000000300000003800000040000000480000005000000088ffffff10000000180000002000000028000000300000003800000040000000480000005000000058000000600000006800000070000000780000008000000088000000100000001c0000002800000034000000400000004c0000005800000064000000700000007c0000008800000094000000a0000000ac000000b8000000c4000000000000000000000000000000000000000000000000000000"
+}

@@ -1,0 +1,29 @@
+{
+  "provided_symvers_sha256": "a5cac55aa1398925453e75aa82f527d8cdb2386b4242cdb05ab3312b651aad80",
+  "symbols": {
+    "__arch_copy_from_user": "0x84bc974b",
+    "__rcu_read_lock": "0x8d522714",
+    "memset": "0xdcb764ad",
+    "__arch_copy_to_user": "0xb35dea8f",
+    "misc_register": "0x3278478b",
+    "__check_object_size": "0x88db9f48",
+    "__const_udelay": "0xeae3dfd6",
+    "__cpu_online_mask": "0x582a1d93",
+    "memcpy": "0x4829a47e",
+    "__cpu_possible_mask": "0x44468156",
+    "module_layout": "0x2ee5b3bb",
+    "__kmalloc": "0xd2b09ce5",
+    "kmalloc_caches": "0x383fe1f7",
+    "mutex_unlock": "0xda3a87be",
+    "__task_pid_nr_ns": "0x55f79e5f",
+    "kmem_cache_alloc_trace": "0x25c61ec9",
+    "capable": "0xc6cbbc89",
+    "printk": "0x27e1a049",
+    "__rcu_read_unlock": "0x2469810f",
+    "__stack_chk_fail": "0xdb7305a1",
+    "mutex_lock": "0xab313d61",
+    "__stack_chk_guard": "0x8f678b07",
+    "misc_deregister": "0x0cf482ac",
+    "kfree": "0x037a0cba"
+  }
+}
