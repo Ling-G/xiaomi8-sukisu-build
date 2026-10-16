@@ -58,6 +58,17 @@ static inline u32 ksu_susfs_current_sid_compat(void)
  p=k/'fs/namei.c';t=p.read_text();a=t.index('static int do_last(');b=t.index('\n\tnd->flags &= ~LOOKUP_PARENT;',a)
  section=t[a:b];block='#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tnd->state |= ND_STATE_OPEN_LAST;\n#endif\n';assert section.count(block)==1
  section=section.replace(block,'',1);t=t[:a]+section+block+t[b:];p.write_text(t)
+ p=k/'fs/notify/fdinfo.c';t=p.read_text();a=t.index('static void inotify_fdinfo(');b=t.index('void inotify_show_fdinfo(',a);section=t[a:b]
+ decl='\t\tu32 mask = mark->mask & IN_ALL_EVENTS;\n';assert section.count(decl)==1;section=section.replace(decl,'',1);section=section.replace('\tif (inode) {\n','\tif (inode) {\n'+decl,1);p.write_text(t[:a]+section+t[b:])
+ # Match GCC 4.9's aggregate initializers and the target's loff_t format.
+ p=k/'fs/susfs.c';t=p.read_text()
+ for typ,field in [('sus_path','target_pathname'),('uname','release'),('open_redirect','target_pathname'),('sus_map','target_pathname'),('variant','susfs_variant'),('version','susfs_version')]:
+  for name in ['info','my_uname']:
+   t=t.replace('struct st_susfs_'+typ+' '+name+' = {0};','struct st_susfs_'+typ+' '+name+' = { .'+field+' = {0} };')
+ assert t.count("spoofed_size: '%u'")==2
+ t=t.replace("spoofed_size: '%u'", "spoofed_size: '%lld'");p.write_text(t)
+ # This Xiaomi tree backports smaps_rollup; make its conditional value explicit.
+ replace(k/'fs/proc/task_mmu.c','\tbool last_vma;','\tbool last_vma = false;')
  p=k/'integration.json';r=json.loads(p.read_text());r['features']['susfs']=True;r['susfs']={'repository':'https://github.com/wxx9248/susfs4ksu','ref':'71345ded5af28f55d76ebcdc7a9df9cea56111e1','version':'v2.3.0','patch':'scripts/patches/susfs-4.9-dipper.patch','status':'experimental; runtime validation pending'};p.write_text(json.dumps(r,indent=2)+'\n')
  print('SUSFS v2.3.0 dipper source integration applied')
 
