@@ -2,6 +2,17 @@
 #define VT_USERSPACE_FREESTANDING
 #include "vt_protocol.h"
 
+/* GCC may emit memcpy for constant local array initialization. */
+void *memcpy(void *destination, const void *source, unsigned long count)
+{
+    volatile unsigned char *out = destination;
+    const volatile unsigned char *in = source;
+    unsigned long i;
+    for (i = 0; i < count; ++i)
+        out[i] = in[i];
+    return destination;
+}
+
 static long syscall4(long nr, long a, long b, long c, long d)
 {
     register long x0 __asm__("x0") = a;
