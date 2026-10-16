@@ -19,6 +19,8 @@ s=s.replace(a,a+'make O="$OUT" HOSTCFLAGS=\'-O2 -fcommon\' -k -j"$(nproc)" '+obj
 p.write_text(s)
 PY
 bash "$ROOT/scripts/build-builtin.sh"
+python3 "$ROOT/scripts/export-symvers.py" "$ROOT/out" "$ROOT/artifacts" "$ROOT/work/gcc64/bin/aarch64-linux-android-nm"
+(cd "$ROOT/artifacts" && sha256sum Module.symvers kernel-export-crcs.txt symvers-check.json >> SHA256SUMS)
 "$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -fno-builtin -fno-stack-protector -nostdlib -static -Wl,--build-id=none -Wl,-e,_start "$ROOT/scripts/susfs-query.c" -o "$ROOT/artifacts/susfs-query"
 python3 - "$ROOT" <<'PY'
 import json,sys,re,hashlib
@@ -29,5 +31,5 @@ for o in opts:assert re.search('^CONFIG_'+o+'=y$',c,re.M),o
 symbols=['susfs_init','susfs_add_sus_path','susfs_set_uname','susfs_show_version','susfs_set_hide_sus_mnts_for_non_su_procs','ksu_handle_setresuid','ksu_handle_sys_reboot']
 for n in symbols:assert re.search(r'\b'+n+r'$',m,re.M),n
 (a/'susfs-check.json').write_text(json.dumps({'version':'v2.3.0','ref':'71345ded5af28f55d76ebcdc7a9df9cea56111e1','enabled_config':opts,'required_symbols':symbols,'passed':True,'hardware_validation':'pending'},indent=2)+'\n')
-(a/'SUSFS-SHA256SUMS').write_text(''.join(hashlib.sha256((a/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['Image.gz','kernel.config','System.map','integration.json','susfs-check.json','susfs-query']))
+(a/'SUSFS-SHA256SUMS').write_text(''.join(hashlib.sha256((a/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in ['Image.gz','kernel.config','System.map','integration.json','susfs-check.json','susfs-query','Module.symvers','kernel-export-crcs.txt','symvers-check.json']))
 PY
