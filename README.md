@@ -77,6 +77,9 @@ Wi-Fi 的原生内置模式仍需要在文件系统就绪后触发 `/sys/kernel/
 
 ### 清空数据后的后台自动部署
 
+**已知问题：全量刷机后的首次启动尚不通过。** 用户实测使用 `flash_all.bat` 清空并重刷后直接使用 `boot-dipper-susfs-bootstrap.img` 无法进入系统，第二次重启进入 Recovery；先使用不带自动安装的 `boot-dipper-susfs.img` 完成首次开机，再切换自动安装版可以正常启动。现有“移走后台和 bin 后自动补齐”的测试只覆盖已初始化系统，不能代表全新 userdata 的首次启动。该问题正在排查，请勿将当前自动安装版作为全量刷机后的首次启动镜像。
+
+
 新增可选的后台引导封装：将经过 SHA256 校验的官方 4.2.0 ARM64 `ksud` 及安装器加入 ramdisk。内核在 Android 10 切换系统根目录前保留这两个资源，读取 init 配置时交接到 `/dev`；`post-fs-data` 同步安装缺失后台，再继续原有 KSU 开机流程。原厂 first-stage `init` 文件保持原样，无需修改 system/vendor 或关闭 SELinux。
 
 已有 `/data/adb/ksud` 时保留现有版本，不覆盖后台、授权或模块配置。本功能需要同时使用支持资源交接的新内核和带 `--ksud` 封装的 boot；单独下载 `Image.gz` 不会自动带上后台。
