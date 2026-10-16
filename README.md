@@ -22,7 +22,7 @@
 
 已新增独立工作流 **Build dipper builtin drivers with SUSFS**，在音频/Wi-Fi 内置版上接入 SUSFS **v2.3.0 / NON-GKI**。使用 [wxx9248 的 Linux 4.9 移植](https://github.com/wxx9248/susfs4ksu)，固定提交 `71345ded5af28f55d76ebcdc7a9df9cea56111e1`，并针对小米源码、GCC 4.9、旧版 SELinux SID 接口及存储监测流程进行适配。
 
-[实验构建 #5](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38890083902)（提交 `d52b1842972337657858fd0f3ccee3243b39a5e5`）已通过电脑端临时启动检查：版本与功能查询正常，`uname` 临时修改及恢复测试通过，SID 缓存和存储监测的监听、事件、延迟清理流程正常；Root 授权保留、Wi-Fi 自动连接、声卡注册、无外部模块及 SELinux Enforcing 均已核对。最终音乐、视频与管理器界面体验尚待用户确认。
+[实验构建 #5](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38890083902)（提交 `d52b1842972337657858fd0f3ccee3243b39a5e5`）已通过电脑端临时启动检查：版本与功能查询正常，`uname` 临时修改及恢复测试通过，SID 缓存和存储监测的监听、事件、延迟清理流程正常；Root 授权保留、Wi-Fi 自动连接、声卡注册、无外部模块及 SELinux Enforcing 均已核对。用户已确认音乐、视频、Wi-Fi 上网和 SukiSU 识别均正常，管理器 SUSFS 页面显示 v2.3.0。
 
 **SUSFS 版当前仅临时启动，未永久刷入。** 上文“永久刷入后两次重启正常”的记录属于之前不带 SUSFS 的稳定内置版。实验流程保留该稳定版 boot 分区内容，正常重启可返回稳定版。
 
