@@ -30,6 +30,8 @@
 
 成功构建后下载产物：SUSFS 版为 `dipper-susfs-experimental`，不带 SUSFS 版为 `dipper-builtin-experimental`。产物包含 `Image.gz`、配置、检查报告及校验清单，保留 **14 天**。使用前确认任务成功，并核对 `SHA256SUMS`、`BUILTIN-SHA256SUMS`；SUSFS 版还需核对 `SUSFS-SHA256SUMS`。
 
+[符号表导出构建 #8](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38941989142) 另含 `Module.symvers` 和 CRC 检查报告；全部 11,641 个导出 CRC 已与构建 #7 原镜像核对一致，可配套上述延后安装版使用，无需重刷。
+
 ## 封装与启动
 
 仓库不提供原厂或修改后的 boot 镜像，需要用上述系统的原厂 `boot.img` 本地封装。脚本会核对原厂镜像及后台校验值，保留原厂 init 和 DTB，移除修改后失效的 AVB1 签名。
