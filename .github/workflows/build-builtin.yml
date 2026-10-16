@@ -1,0 +1,31 @@
+name: Build dipper builtin audio and Wi-Fi
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-builtin.yml'
+      - 'scripts/build-builtin.sh'
+      - 'scripts/prepare-builtin.py'
+permissions:
+  contents: read
+concurrency:
+  group: dipper-builtin-drivers
+  cancel-in-progress: true
+jobs:
+  builtin:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential bc flex bison libssl-dev libelf-dev libncurses5 libtinfo5 python3 git curl zip
+      - name: Build kernel with builtin audio and WLAN
+        run: bash scripts/build-builtin.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dipper-builtin-experimental
+          path: |
+            artifacts/
+            build.log
+          retention-days: 14
