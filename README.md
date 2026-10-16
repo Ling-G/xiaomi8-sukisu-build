@@ -18,12 +18,33 @@
 
 [已验证的内置版构建 #2](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38862869932)，源码提交 [`b337f2e`](https://github.com/Ling-G/xiaomi8-sukisu-build/commit/b337f2ef8e1868047889370e9f645f8e39d7fd90)。实机验证使用本地原厂 boot 镜像封装后的镜像，原厂及修改后的 boot 镜像均未上传到本仓库。
 
+## SUSFS 实验版（可选）
+
+已新增独立工作流 **Build dipper builtin drivers with SUSFS**，在音频/Wi-Fi 内置版上接入 SUSFS **v2.3.0 / NON-GKI**。使用 [wxx9248 的 Linux 4.9 移植](https://github.com/wxx9248/susfs4ksu)，固定提交 `71345ded5af28f55d76ebcdc7a9df9cea56111e1`，并针对小米源码、GCC 4.9、旧版 SELinux SID 接口及存储监测流程进行适配。
+
+[实验构建 #5](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38890083902)（提交 `d52b1842972337657858fd0f3ccee3243b39a5e5`）已通过电脑端临时启动检查：版本与功能查询正常，`uname` 临时修改及恢复测试通过，SID 缓存和存储监测的监听、事件、延迟清理流程正常；Root 授权保留、Wi-Fi 自动连接、声卡注册、无外部模块及 SELinux Enforcing 均已核对。最终音乐、视频与管理器界面体验尚待用户确认。
+
+**SUSFS 版当前仅临时启动，未永久刷入。** 上文“永久刷入后两次重启正常”的记录属于之前不带 SUSFS 的稳定内置版。实验流程保留该稳定版 boot 分区内容，正常重启可返回稳定版。
+
+当前官方 4.2.0 `ksud` 已提供匹配的控制命令，在 Root Shell 中可查询：
+
+```text
+/data/adb/ksud susfs status
+/data/adb/ksud susfs version
+/data/adb/ksud susfs features
+```
+
+构建产物另含 `susfs-check.json`、`SUSFS-SHA256SUMS` 和只读 `susfs-query` 诊断工具。源码入口为 [scripts/build-susfs.sh](scripts/build-susfs.sh) 与 [scripts/prepare-susfs.py](scripts/prepare-susfs.py)，先预检所有修改对象，再构建完整内核。
+
+内核支持已编入，不等于所有隐藏规则组合均已测试。实验流程未安装规则模块或写入自定义持久配置，不承诺通过特定应用的检测。4.2.1 管理器与当前内核 UAPI 的原有差异也仍然存在。长期稳定性和各项隐藏规则仍需进一步验证。
+
 ## 构建方式
 
 在 [Actions](https://github.com/Ling-G/xiaomi8-sukisu-build/actions) 中选择对应工作流并运行：
 
 | 工作流 | 内容 |
 | --- | --- |
+| Build dipper builtin drivers with SUSFS | SUSFS v2.3.0 实验版，保留内置音频/Wi-Fi |
 | **Build dipper builtin audio and Wi-Fi** | 当前已验证方案：完整内核，内置音频和 Wi-Fi 驱动 |
 | Build dipper audio core and matching modules | 之前的分离驱动方案：音频核心及配套音频、Wi-Fi 模块 |
 | Build matching dipper Wi-Fi module | 内核及配套 Wi-Fi 模块 |
@@ -51,14 +72,13 @@ Wi-Fi 的原生内置模式仍需要在文件系统就绪后触发 `/sys/kernel/
 
 驱动内置后，SukiSU 后台仍负责授权持久化及模块生命周期等功能。当前测试手机已部署匹配的 `/data/adb/ksud`；仅启动本仓库编译的内核，不会自动完成所有后台安装。未部署相同后台环境的手机尚未验证，不应仅凭管理器能打开就判断后台完整可用。
 
-[scripts/prepare.py](scripts/prepare.py) 包含手动内核 hook、旧内核 API 兼容、管理器开机扫描、旧版 fscrypt 文件访问与后台服务启动修复。KPM、SUSFS、调试模式和可选 adb-root 功能关闭；4.9 端口不提供可选 SELinux 隐藏功能。
+[scripts/prepare.py](scripts/prepare.py) 包含手动内核 hook、旧内核 API 兼容、管理器开机扫描、旧版 fscrypt 文件访问与后台服务启动修复。稳定的基础/驱动内置版关闭 SUSFS，独立 SUSFS 实验版启用相应配置。KPM、调试模式和可选 adb-root 功能均关闭；4.9 端口不提供可选 SELinux 隐藏功能。
 
 ## 本地封装与临时启动
 
-仓库不包含原厂 boot 镜像。下载成功构建的产物并解压后，先检查校验清单与整合报告，也可运行：
+仓库不包含原厂 boot 镜像。下载成功构建的产物并解压后，先在产物目录核对 `SHA256SUMS` 和 `BUILTIN-SHA256SUMS`；SUSFS 版还应核对 `SUSFS-SHA256SUMS`，并查看对应整合报告。提供 `sha256sum` 的环境中可使用 `sha256sum -c <清单文件名>`。封装时运行：
 
 ```text
-python scripts/verify.py /path/to/artifacts
 python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz /path/to/boot-sukisu.img
 ```
 
