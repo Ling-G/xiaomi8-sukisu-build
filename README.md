@@ -80,7 +80,7 @@ Wi-Fi 的原生内置模式仍需要在文件系统就绪后触发 `/sys/kernel/
 **已知问题：全量刷机后的首次启动尚不通过。** 用户实测使用 `flash_all.bat` 清空并重刷后直接使用 `boot-dipper-susfs-bootstrap.img` 无法进入系统，第二次重启进入 Recovery；先使用不带自动安装的 `boot-dipper-susfs.img` 完成首次开机，再切换自动安装版可以正常启动。现有“移走后台和 bin 后自动补齐”的测试只覆盖已初始化系统，不能代表全新 userdata 的首次启动。该问题正在排查，请勿将当前自动安装版作为全量刷机后的首次启动镜像。
 
 
-新增可选的后台引导封装：将经过 SHA256 校验的官方 4.2.0 ARM64 `ksud` 及安装器加入 ramdisk。内核在 Android 10 切换系统根目录前保留这两个资源，读取 init 配置时交接到 `/dev`；`post-fs-data` 同步安装缺失后台，再继续原有 KSU 开机流程。原厂 first-stage `init` 文件保持原样，无需修改 system/vendor 或关闭 SELinux。
+构建 #6 的原实现为可选后台引导封装（后续时序候选见下节）：将经过 SHA256 校验的官方 4.2.0 ARM64 `ksud` 及安装器加入 ramdisk。内核在 Android 10 切换系统根目录前保留这两个资源，读取 init 配置时交接到 `/dev`；`post-fs-data` 同步安装缺失后台，再继续原有 KSU 开机流程。原厂 first-stage `init` 文件保持原样，无需修改 system/vendor 或关闭 SELinux。
 
 已有 `/data/adb/ksud` 时保留现有版本，不覆盖后台、授权或模块配置。本功能需要同时使用支持资源交接的新内核和带 `--ksud` 封装的 boot；单独下载 `Image.gz` 不会自动带上后台。
 
@@ -94,6 +94,15 @@ python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz 
 APK 和提取的后台分别按固定校验值核对，不依赖可变的 latest 版本。安装器日志位于 `/data/adb/dipper-bootstrap.log`，仅记录安装或保留结果。
 
 [后台自动部署构建 #6](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38902385437)（内核提交 `193726b00e64497ba2e477ff998183fbaef37084`）已完成两次临时启动：已有后台时保留；后台与配套 `bin` 目录经备份移走后，开机约 5.7 秒自动安装完成，再进入正常 KSU `post-fs-data` 流程。常规 Root、SUSFS v2.3.0 查询和授权文件校验通过，SELinux Enforcing，原 boot 分区未改写。测试模拟了组件缺失，没有再次清空整台手机；用户已确认 MT Root 操作、SukiSU 识别、音乐/视频播放及 Wi-Fi 上网均正常，无需重新授权或手动补装后台。上述验证最初使用临时启动；用户后续在旧版完成首次初始化后刷入自动安装版并正常启动，但全量刷机后的直接首次启动失败，见本节已知问题。
+
+
+### 延后安装候选版（全量首次启动待验证）
+
+[候选构建 #7](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38925186346)，源码提交 `3d4c051839b49da0b31d9273b1cfddf4f689899c`。针对上述已知问题，将“缺失后台的首次安装”从 `post-fs-data` 移到 `sys.boot_completed=1`；已有后台仍保留正常早期流程。首次补装不在系统启动后补跑模块早期挂载，完整模块早期阶段从下一次正常重启开始。原失败启动日志未留存，这属于时序调整候选，尚未证实根因。
+
+已完成两次保留用户数据的临时启动：后台与工具经备份移走后，早期约 5.9 秒跳过安装，系统启动完成后约 22.5 秒自动补装；下一次启动约 5.8 秒正常执行早期后台流程。Root、授权文件校验、SUSFS v2.3.0、声卡注册、无外部模块和 SELinux Enforcing 均通过，boot 分区未改写。**全量刷机后全新 userdata 的首次启动仍未验证，不能宣称上述启动失败已修复。** 本候选也尚未永久刷入。
+
+最新 `repack.py --ksud` 要求内核包含晚期安装入口，旧构建会被拒绝。需要自动部署功能时，请使用本候选的内核和最新封装脚本；仍需按上述方法从固定官方 APK 提取后台。候选版本只在本地封装，仓库不提供原厂或修改后的 boot 镜像。
 
 ## 本地封装与临时启动
 
