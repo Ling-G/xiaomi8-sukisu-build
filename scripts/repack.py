@@ -43,7 +43,7 @@ def repack(stock_path, kernel_path, output_path, ksud_path=None):
     if dtbs[:4] != b"\xd0\x0d\xfe\xed":
         raise ValueError("Stock appended device tree was not found")
     new_gzip = kernel_path.read_bytes()
-    _, checked_gzip, extra = split_gzip(new_gzip)
+    kernel_image, checked_gzip, extra = split_gzip(new_gzip)
     if extra or checked_gzip != new_gzip:
         raise ValueError("Input must be Image.gz without appended DTBs")
     new_kernel = new_gzip + dtbs
@@ -53,6 +53,8 @@ def repack(stock_path, kernel_path, output_path, ksud_path=None):
         raise ValueError("Truncated stock ramdisk")
     stock_ramdisk = ramdisk
     if ksud_path is not None:
+        if b"dipper bootstrap: retained %s" not in kernel_image:
+            raise ValueError("Kernel lacks the dipper SAR bootstrap handoff; rebuild with the updated sources")
         from bootstrap_ramdisk import add_bootstrap
         ramdisk = add_bootstrap(ramdisk, ksud_path)
     digest = hashlib.sha1()
@@ -79,6 +81,7 @@ def repack(stock_path, kernel_path, output_path, ksud_path=None):
         "stock_ramdisk_sha256": hashlib.sha256(stock_ramdisk).hexdigest(),
         "ramdisk_sha256": hashlib.sha256(ramdisk).hexdigest(),
         "backend_bootstrap": ksud_path is not None,
+        "backend_sha256": hashlib.sha256(ksud_path.read_bytes()).hexdigest() if ksud_path else None,
         "boot_header": 1,
         "signature": "Original AVB1 signature omitted; unlocked bootloader required",
         "device_validation": "Not performed; compilation/repacking alone does not confirm boot or Root",
