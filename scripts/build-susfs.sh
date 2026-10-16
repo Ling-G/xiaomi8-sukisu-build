@@ -12,6 +12,10 @@ assert s.count(a)==1;s=s.replace(a,a+'python3 "$ROOT/scripts/prepare-susfs.py" "
 opts=['KSU_SUSFS','KSU_SUSFS_SUS_PATH','KSU_SUSFS_SUS_MOUNT','KSU_SUSFS_SUS_KSTAT','KSU_SUSFS_SPOOF_UNAME','KSU_SUSFS_ENABLE_LOG','KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS','KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG','KSU_SUSFS_OPEN_REDIRECT','KSU_SUSFS_SUS_MAP']
 a='--disable KSU_SUSFS';assert s.count(a)==1;s=s.replace(a,' '.join('--enable '+o for o in opts))
 s=s.replace("grep -qx '# CONFIG_KSU_SUSFS is not set'", "grep -qx 'CONFIG_KSU_SUSFS=y'")
+a='make O="$OUT" HOSTCFLAGS=\'-O2 -fcommon\' drivers/kernelsu/ksu.o\n'
+assert s.count(a)==1
+objects='fs/susfs.o fs/compat.o fs/exec.o fs/namei.o fs/namespace.o fs/notify/fdinfo.o fs/open.o fs/proc/base.o fs/proc/cmdline.o fs/proc/fd.o fs/proc/task_mmu.o fs/proc_namespace.o fs/read_write.o fs/readdir.o fs/stat.o fs/statfs.o kernel/kallsyms.o kernel/reboot.o kernel/sys.o mm/memory.o security/selinux/avc.o'
+s=s.replace(a,a+'make O="$OUT" HOSTCFLAGS=\'-O2 -fcommon\' -k -j"$(nproc)" '+objects+'\n')
 p.write_text(s)
 PY
 bash "$ROOT/scripts/build-builtin.sh"

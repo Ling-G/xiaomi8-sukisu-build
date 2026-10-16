@@ -54,6 +54,10 @@ static inline u32 ksu_susfs_current_sid_compat(void)
 }
 '''
  body=body.replace('#ifdef CONFIG_KSU_SUSFS',helper,1);p.write_text(prefix+body)
+ # Keep the stock kernel's declaration-before-statement warning policy.
+ p=k/'fs/namei.c';t=p.read_text();a=t.index('static int do_last(');b=t.index('\n\tnd->flags &= ~LOOKUP_PARENT;',a)
+ section=t[a:b];block='#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tnd->state |= ND_STATE_OPEN_LAST;\n#endif\n';assert section.count(block)==1
+ section=section.replace(block,'',1);t=t[:a]+section+block+t[b:];p.write_text(t)
  p=k/'integration.json';r=json.loads(p.read_text());r['features']['susfs']=True;r['susfs']={'repository':'https://github.com/wxx9248/susfs4ksu','ref':'71345ded5af28f55d76ebcdc7a9df9cea56111e1','version':'v2.3.0','patch':'scripts/patches/susfs-4.9-dipper.patch','status':'experimental; runtime validation pending'};p.write_text(json.dumps(r,indent=2)+'\n')
  print('SUSFS v2.3.0 dipper source integration applied')
 
