@@ -40,6 +40,24 @@ The second round's `rmmod` failure is the intended behaviour: the module unlinks
 
 Nodes use a fresh random six-character name on each load (`MlLhYV` in round one, `vjHkNL` in round two), matching the recovered `get_rand_str` (62-character table, length 6, `sizeof(charset)-1` modulus).
 
+## Retest after a reboot (clean state)
+
+The whole two-round sequence was repeated from a clean boot (uptime 66 s at the start) and reproduced the same results: discovery node `lTUlTc` in round one and `h37SfM` in round two, every row of the table above identical.
+
+Independent probes of the hidden state, run as a script on the device instead of through nested quoting:
+
+| probe | value |
+| --- | --- |
+| `/proc/modules` matching lines | 0 |
+| `/proc/kallsyms` matching lines (total 185,061) | 0 |
+| `/sys/module/vt_abi_probe` | absent |
+| `lsmod` matching lines | 0 |
+| `/dev/vt_abi_probe` | present, `crw------- root root 205,0` |
+| `/dev/h37SfM` | present, `crw------- root root 206,0` |
+| `rmmod vt_abi_probe` | exit 1, `No such file or directory` |
+
+`/proc/kallsyms` containing no `vt_abi_probe` entry confirms the documented expectation: removing the module from the module list also removes it from the kallsyms module walk.
+
 ## Notes
 
 - The kernel prints `CHRDEV "vt_abi_probe" major number 205 goes below the dynamic allocation range` on load. It is harmless here: the node is created, read, hidden and restored as expected.
