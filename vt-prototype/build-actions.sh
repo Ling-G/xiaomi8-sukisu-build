@@ -68,5 +68,6 @@ PY
 cp artifacts/kernel.config artifacts/kernelrelease.txt vt-probe-artifacts/
 cp out/Module.symvers vt-probe-artifacts/Module.symvers
 cp vt-prototype/README.md vt-probe-artifacts/README-source-status.md
+cp vt-prototype/test-v04-hide.sh vt-probe-artifacts/test-v04-hide.sh
 git rev-parse HEAD > vt-probe-artifacts/source-commit.txt
-(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_probe_test vt_hold_test vt_discovery_trace.so Module.symvers kernel.config module-check.json > SHA256SUMS)
+(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_probe_test vt_hold_test vt_discovery_trace.so Module.symvers kernel.config module-check.json test-v04-hide.sh > SHA256SUMS)

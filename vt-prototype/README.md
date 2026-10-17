@@ -56,7 +56,9 @@ make KDIR=/absolute/path/to/matching/kernel-out \
 
 不能仅运行 `modules_prepare` 来生成匹配的 `Module.symvers`。本次已有用户提供的权威符号表：`build-actions.sh` 沿用固定版本的内核集成脚本，准备与手机完全相同配置的头文件和构建工具，再将所需符号的 CRC 子集交给 modpost 编译外部模块。随后用 `verify_module.py` 核对 ELF 架构、vermagic 和所有导入符号 CRC；每个导入也必须存在于用户提供的表格记录中。子集不是完整内核符号表，构建是否通过须以实际运行结果为准。
 
-`probe_client.py` 是可选的 Python 自测，覆盖自身内存读写、无效 PID、长度上限和错误命令。原生 AArch64 客户端 `probe_client.c` 还会创建专用子进程，核对跨进程读取、写入后的父子内存隔离、子进程对写入结果的确认，以及自身/子进程的模块基址查询。`vt_hold_test.c` 编译出的 `vt_hold_test` 只负责打开诊断端点并保持 5 秒，用于从 shell 观察节点在打开期间消失、关闭后恢复。三个程序都不自行安装模块。
+`probe_client.py` 是可选的 Python 自测，覆盖自身内存读写、无效 PID、长度上限和错误命令。原生 AArch64 客户端 `probe_client.c` 还会创建专用子进程，核对跨进程读取、写入后的父子内存隔离、子进程对写入结果的确认，以及自身/子进程的模块基址查询。`vt_hold_test.c` 编译出的 `vt_hold_test` 只负责打开诊断端点并保持 5 秒，用于从 shell 观察节点在打开期间消失、关闭后恢复。
+
+`test-v04-hide.sh` 是设备侧一键双轮验证脚本，随产物一起发布：`sh test-v04-hide.sh 0` 为可卸载模式（`hide_module=0`），不带参数为默认隐藏模式。它会依次检查节点与模块可见性、跑原生自测、用 `vt_hold_test` 观察隐藏窗口，最后用未修改的原脚本确认 `ORIGINAL_VT_RECOGNIZED`。节点存在性用轮询而非固定 `sleep`，因为该内核未启用 `CONFIG_DEVTMPFS`，`/dev` 条目由 ueventd 异步创建。四个程序都不自行安装模块。
 
 ## 内核 API 依赖
 
