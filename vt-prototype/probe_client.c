@@ -219,6 +219,13 @@ static int run(void)
     int result = 0;
     if (fd < 0)
         return 10;
+    r.pid = -1;
+    r.reserved = 0;
+    r.addr = r.buffer = r.size = 0;
+    if (request(fd, VT_MEMORY_READ, &r) != -1) {
+        result = 16;
+        goto done;
+    }
     r.pid = pid;
     r.reserved = 0;
     r.addr = (unsigned long)source;
@@ -258,7 +265,7 @@ done:
 void _start(void)
 {
     int result = run();
-    const char success[] = "PASS: VT self/child read-write and module lookup tests\n";
+    const char success[] = "PASS: VT discovery handshake and self/child memory/module tests\n";
     const char failure[] = "FAIL: VT diagnostic subset tests; inspect exit status\n";
     if (!result)
         syscall4(64, 1, (long)success, sizeof(success) - 1, 0);

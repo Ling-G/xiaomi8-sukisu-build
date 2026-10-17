@@ -33,6 +33,12 @@ static long vt_transfer(unsigned int cmd, void __user *arg)
 
     if (copy_from_user(&request, arg, sizeof(request)))
         return -EFAULT;
+    /* The unmodified client probes the read ABI with exactly this invalid
+     * request. The original driver returns raw -1 (userspace EPERM), not
+     * EINVAL. Keep it an error; no memory access or success is fabricated. */
+    if (cmd == VT_MEMORY_READ && request.pid == -1 && !request.addr &&
+        !request.buffer && !request.size)
+        return -EPERM;
     if (request.pid <= 0)
         return -EINVAL;
     if (request.size > VT_PROBE_MAX_TRANSFER)
@@ -234,19 +240,37 @@ static struct miscdevice vt_device = {
     .mode = 0600,
 };
 
+/* The client enumerates six-character alphanumeric character devices. */
+static struct miscdevice vt_compat_device = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "VTp03A",
+    .fops = &vt_fops,
+    .mode = 0600,
+};
+
 static int __init vt_probe_init(void)
 {
+    int result;
     BUILD_BUG_ON(sizeof(struct vt_copy_memory) != 32);
     BUILD_BUG_ON(sizeof(struct vt_module_base) != 24);
     BUILD_BUG_ON(sizeof(struct vt_hw_bp_info) != 360);
     BUILD_BUG_ON(sizeof(struct vt_hwbp_hit_args) != 32);
     BUILD_BUG_ON(sizeof(struct vt_tracking_data) != 32);
-    pr_info("vt_abi_probe: procfs-authorized memory transfers and module lookup\n");
-    return misc_register(&vt_device);
+    result = misc_register(&vt_device);
+    if (result)
+        return result;
+    result = misc_register(&vt_compat_device);
+    if (result) {
+        misc_deregister(&vt_device);
+        return result;
+    }
+    pr_info("vt_abi_probe: procfs-authorized access; discovery node VTp03A\n");
+    return 0;
 }
 
 static void __exit vt_probe_exit(void)
 {
+    misc_deregister(&vt_compat_device);
     misc_deregister(&vt_device);
 }
 
@@ -254,4 +278,4 @@ module_init(vt_probe_init);
 module_exit(vt_probe_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Recovered VT ABI diagnostic subset for ARM64");
-MODULE_VERSION("0.2");
+MODULE_VERSION("0.3");
