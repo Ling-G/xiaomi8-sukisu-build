@@ -157,9 +157,50 @@ static int six_alnum(const char *name)
 
 /* Many six-character character devices exist (ashmem, binder, random, ...),
  * and root can open several of them, so opening is not enough to identify the
- * driver. Each candidate is probed with a module-base lookup for a name that
- * cannot match: only the real driver answers this command, returning 0 with
- * base 0. */
+ * driver. The device script writes the node it saw appear into this file right
+ * after insmod; fall back to probing /dev when the file is absent. */
+#define VT_NODE_HINT "/data/local/tmp/vt_node.txt"
+
+static long open_from_hint(void)
+{
+    char path[32];
+    char buffer[16];
+    long fd, n;
+
+    n = syscall4(56, -100, (long)VT_NODE_HINT, 0 /* O_RDONLY */, 0);
+    if (n < 0)
+        return -1;
+    {
+        long got = syscall4(63 /* read */, n, (long)buffer, sizeof(buffer) - 1, 0);
+        syscall4(57, n, 0, 0, 0);
+        if (got <= 0)
+            return -1;
+        {
+            int i;
+            for (i = 0; i < got; ++i)
+                if (buffer[i] == '\n' || buffer[i] == '\r')
+                    break;
+            if (i != 6)
+                return -1;
+            buffer[i] = 0;
+        }
+    }
+    path[0] = '/';
+    path[1] = 'd';
+    path[2] = 'e';
+    path[3] = 'v';
+    path[4] = '/';
+    path[5] = buffer[0];
+    path[6] = buffer[1];
+    path[7] = buffer[2];
+    path[8] = buffer[3];
+    path[9] = buffer[4];
+    path[10] = buffer[5];
+    path[11] = 0;
+    fd = syscall4(56, -100, (long)path, 2 | 02000000, 0);
+    return fd;
+}
+
 static long open_discovery_node(void)
 {
     char buffer[2048];
@@ -189,13 +230,17 @@ static long open_discovery_node(void)
                 fd = syscall4(56, -100, (long)path, 2 | 02000000, 0);
                 if (fd >= 0) {
                     struct vt_module_base probe;
+                    long rc;
                     probe.pid = (int)syscall4(172, 0, 0, 0, 0);
                     probe.reserved = 0;
                     probe.name = (unsigned long)"vt_no_such_module_probe";
                     probe.base = 0x1234;
-                    /* Only the VT driver answers this command at all. */
-                    if (syscall4(29, fd, VT_MODULE_BASE, (long)&probe, 0) == 0 &&
-                        probe.base == 0) {
+                    rc = syscall4(29, fd, VT_MODULE_BASE, (long)&probe, 0);
+                    /* Only the VT driver implements this command: a module
+                     * lookup for a name that cannot exist succeeds with base 0.
+                     * Every other device rejects the request with ENOTTY,
+                     * EINVAL or EFAULT rather than answering it. */
+                    if (rc == 0 && probe.base == 0) {
                         syscall4(57, dirfd, 0, 0, 0);
                         return fd;
                     }
@@ -292,8 +337,10 @@ static int run(void)
     char replacement[4] = {'x', 'y', 'z', 0};
     struct vt_copy_memory r;
     long pid = syscall4(172, 0, 0, 0, 0);
-    long fd = open_discovery_node();
+    long fd = open_from_hint();
     int result = 0;
+    if (fd < 0)
+        fd = open_discovery_node();
     if (fd < 0)
         return 10;
     r.pid = -1;

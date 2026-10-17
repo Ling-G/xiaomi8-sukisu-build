@@ -91,6 +91,10 @@ echo DISCOVERY_NODE=${discovery:-none}
 [ -n "$discovery" ] || echo "WARNING: no new six-character node appeared within 12s; check dmesg and ueventd"
 echo KERNEL_LOG=$(dmesg | grep 'vt_abi_probe' | tail -n 2 | tr '\n' '|')
 
+# Tell the self test which node to use: /dev holds about twenty six-character
+# character devices and root can open several of them.
+printf '%s\n' "$discovery" > "$scratch/vt_node.txt"
+
 # From here on the single endpoint is the discovery node itself.
 node=/dev/${discovery:-none}
 
