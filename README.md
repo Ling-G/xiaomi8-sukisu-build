@@ -1,74 +1,201 @@
-# 小米 8 SukiSU 内核
+# 小米 8 VT 外部驱动（4.9.186）
 
-适用于 **小米 8（dipper）/ MIUI V12.5.2.0.QEACNXM / Android 10 / Linux 4.9.186**，需要已解锁 Bootloader。
+本分支 `vt-abi-probe-4.9` 开发独立加载的 **`vt_abi_probe.ko`**。当前 **v0.3 已通过真机加载、自测和原版 VT 4.7.7 识别测试**，无需重新封装或刷入 boot 镜像。
 
-集成 SukiSU `builtin`、SUSFS **v2.3.0 / NON-GKI**，音频和 Wi-Fi 驱动直接内置，无需配套 `.ko`。其他 ROM 和设备未验证。
+**这仍是部分实现：硬件断点、tracking 和完整 PTE 接口尚未完成。识别成功不代表 VT 的全部功能可用。**
 
-## 已验证版本
+原有 SukiSU/SUSFS 内核构建说明见 [main 分支 README](https://github.com/Ling-G/xiaomi8-sukisu-build/blob/main/README.md)。本分支的驱动工作独立进行，不修改 main。
 
-使用 **延后安装版 `boot-dipper-susfs-bootstrap-late.img`**：
+## 已验证环境
 
-- [构建 #7](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38925186346)，源码提交 `3d4c051839b49da0b31d9273b1cfddf4f689899c`。
-- 2026-10-17 用户确认：通过 `flash_all.bat` 全量刷机后，直接首次启动成功，各项已测功能正常。
-- 已测音乐、视频、Wi-Fi、MT Root、管理器识别及授权保存；SELinux 保持 Enforcing，外部模块列表为空。
-- 后台缺失时，在系统启动完成后自动安装官方 `ksud 4.2.0`；已有后台则保留。首次补装后，模块早期启动阶段从下一次正常重启开始。
-
-**旧版 `boot-dipper-susfs-bootstrap.img` 存在全量刷机后首次启动失败的问题，请使用带 `-late` 的版本。** 原失败日志未保留，具体根因未确认。
-
-长期稳定性、通话、录音、蓝牙音频、热点、休眠续航、exFAT 和第三方模块尚未完整验证；SUSFS 不保证通过特定应用的检测。
-
-## 构建
-
-在 [Actions](https://github.com/Ling-G/xiaomi8-sukisu-build/actions) 中选择工作流，点击 **Run workflow**：
-
-| 工作流 | 内容 |
+| 项目 | 已验证值 |
 | --- | --- |
-| [Build dipper builtin drivers with SUSFS](.github/workflows/build-susfs.yml) | 当前已验证方案：SUSFS、内置音频和 Wi-Fi，支持后台自动部署封装 |
-| [Build dipper builtin audio and Wi-Fi](.github/workflows/build-builtin.yml) | 不带 SUSFS 的内置驱动版 |
+| 设备 | 小米 8 / dipper，AArch64 |
+| 系统 | MIUI V12.5.2.0.QEACNXM / Android 10 |
+| 当前内核 | `4.9.186-perf-g10af704` |
+| 模块版本 | `0.3` |
+| 主程序 | 原版 VT 4.7.7 |
+| 模块 vermagic | `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64` |
 
-其他工作流为早期实验方案。仅修改 README 不会触发构建。
+仅有相同的 `4.9.186` 版本号不足以确认兼容，内核配置及导出符号 CRC 也必须匹配。其他内核、ROM 和设备未验证。
 
-成功构建后下载产物：SUSFS 版为 `dipper-susfs-experimental`，不带 SUSFS 版为 `dipper-builtin-experimental`。产物包含 `Image.gz`、配置、检查报告及校验清单，保留 **14 天**。使用前确认任务成功，并核对 `SHA256SUMS`、`BUILTIN-SHA256SUMS`；SUSFS 版还需核对 `SUSFS-SHA256SUMS`。
+## 下载
 
-[符号表导出构建 #8](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/38941989142) 另含 `Module.symvers` 和 CRC 检查报告；全部 11,641 个导出 CRC 已与构建 #7 原镜像核对一致，可配套上述延后安装版使用，无需重刷。
+已验证的 v0.3 来自 [Actions 构建 #9](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/39005888286)，源码提交为 [fbcf057](https://github.com/Ling-G/xiaomi8-sukisu-build/commit/fbcf057ef49054541c7966dd8731c5dc29199785)。
 
-## 封装与启动
+在该任务页面的 **Artifacts** 中下载 `vt-abi-probe-dipper-4.9`，解压后进入 `vt-probe-artifacts/`：
 
-仓库不提供原厂或修改后的 boot 镜像，需要用上述系统的原厂 `boot.img` 本地封装。脚本会核对原厂镜像及后台校验值，保留原厂 init 和 DTB，移除修改后失效的 AVB1 签名。
+| 文件 | 用途 |
+| --- | --- |
+| `vt_abi_probe.ko` | 独立内核模块 |
+| `vt_probe_test` | 原生 AArch64 自测程序，不会自行加载或卸载模块 |
+| `module-check.json`、`SHA256SUMS` | ABI 检查结果和校验清单 |
+| `kernel.config`、`kernelrelease.txt`、`Module.symvers` | 构建配置及符号记录 |
 
-从 [官方 v4.2.0 发布页](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/tag/v4.2.0) 下载 `SukiSU_v4.2.0_40900-release.apk`，提取后台并封装自动部署版：
+Actions 产物保留 **14 天**。其中的 `Module.symvers` 是本模块所需符号的子集，不能替代完整内核符号表。开发用的 `vt_discovery_trace.so` 无需安装，正常启动不依赖它。
+
+已验证 v0.3 的 `vt_abi_probe.ko` SHA256：
 
 ```text
-python scripts/extract-backend.py /path/to/SukiSU_v4.2.0_40900-release.apk /path/to/ksud-4.2.0
-python scripts/repack.py /path/to/original/boot.img /path/to/artifacts/Image.gz /path/to/boot-dipper-susfs-bootstrap-late.img --ksud /path/to/ksud-4.2.0
+07c03ac2e051eded3873562d6e23c048e404571dbd7ec73d85770575f326a1df
 ```
 
-`--ksud` 需要包含晚期安装入口的新内核；单独的 `Image.gz` 不含后台。省略此选项可保留完整原厂 ramdisk，但需自行部署后台。
+## 加载与启动
 
-先用 `fastboot boot` 临时测试，**保留原厂完整启动参数并追加 `androidboot.mode=normal`**，避免进入充电模式：
+需要 Root。将下载的模块推送到手机：
+
+```sh
+adb push vt_abi_probe.ko /data/local/tmp/vt_abi_probe.ko
+adb shell
+```
+
+进入手机终端后执行：
+
+```sh
+su
+cp /data/local/tmp/vt_abi_probe.ko /data/adb/vt_compat_4.9.186_v03.ko
+chmod 600 /data/adb/vt_compat_4.9.186_v03.ko
+insmod /data/adb/vt_compat_4.9.186_v03.ko
+sh /data/adb/VT内核-4.7.7.sh
+```
+
+如模块已经加载，直接启动 VT，无需重复 `insmod`。加载后会创建两个可见节点：
+
+- `/dev/VTp03A`：供原版 VT 枚举识别的 6 位名称端点。
+- `/dev/vt_abi_probe`：诊断和自测端点。
+
+两者权限均为 `root:root 0600`。本项目没有配置开机自动加载，重启后需重新执行 `insmod`。
+
+卸载前退出 VT 及其他使用该设备的程序，再在 Root 终端执行：
+
+```sh
+rmmod vt_abi_probe
+```
+
+如果模块仍被占用，先结束使用它的进程并等待文件描述符关闭。
+
+## 真机验证结果
+
+2026-10-17，在原脚本未修改、未注入跟踪库的情况下，VT 输出：
 
 ```text
-fastboot --cmdline "<原厂完整启动参数> androidboot.mode=normal" boot boot-dipper-susfs-bootstrap-late.img
+[+] VT驱动已安装，跳过自动刷入
 ```
 
-临时启动不刷写分区，重启后使用 boot 分区原有内核。永久刷入后则继续使用已刷入的内核。`flash_all.bat` 全量刷机会清空用户数据，应先备份。
+同轮原生自测及加载、卸载检查结果：
 
-## 兼容性说明
+```text
+LOAD_STATUS=0
+PASS: VT discovery handshake and self/child memory/module tests
+SELFTEST_STATUS=0
+ORIGINAL_VT_RECOGNIZED=1
+CLEAN_UNLOAD_STATUS=0
+FINAL_LOAD_STATUS=0
+FINAL_LOADED_VERSION=0.3
+```
 
-- 使用官方 **4.2.1 管理器 + 4.2.0 后台**。当前内核兼容版本号为 `40900`、UAPI 为 **2**；管理器要求 UAPI 5，因此可能提示更新内核，该提示不代表本项目已支持 UAPI 5。4.2.0 管理器在此系统曾出现白屏。
-- 后台安装日志：`/data/adb/dipper-bootstrap.log`。SUSFS 可用 Root Shell 查询：`/data/adb/ksud susfs version`。
-- Wi-Fi 仍使用原厂 vendor 的固件和配置。升级内置驱动版时禁用旧 `dipper_driver_autoload` 模块，不要混用其他内核的 `.ko` 或跳过 ABI 校验。
-- KPM、调试模式、可选 adb-root 均关闭；本 4.9 端口不提供可选 SELinux 隐藏功能。
+测试覆盖精确的发现握手、自身和专用子进程的内存读写、父子内存隔离、子进程写入确认、自身与子进程的模块查询，以及无效 PID、长度上限、缺失模块和不支持命令的错误处理。
 
-## 源码与许可
+自行复测时，将 `vt_probe_test` 推送到手机；保持此文件名，以便模块查询测试匹配：
 
-| 组件 | 固定来源 |
+```sh
+adb push vt_probe_test /data/local/tmp/vt_probe_test
+adb shell
+```
+
+模块已加载后，在手机终端执行：
+
+```sh
+su
+chmod 700 /data/local/tmp/vt_probe_test
+/data/local/tmp/vt_probe_test
+echo $?
+```
+
+预期出现上述 `PASS`，退出码为 `0`。
+
+## 功能范围
+
+| 功能 | 当前状态 |
 | --- | --- |
-| 内核 | [MiCode / dipper-q-oss](https://github.com/MiCode/Xiaomi_Kernel_OpenSource/tree/dcfb1676925aec83b06ae04fd8ca989ced75067c) |
-| SukiSU | [SukiSU-Ultra / builtin](https://github.com/SukiSU-Ultra/SukiSU-Ultra/tree/2d1de629d4204d25cc0c8927b959d9135d9781f4) |
-| 音频 | [MiCode audio-kernel / dipper-q-oss](https://github.com/MiCode/vendor_qcom_opensource_audio-kernel/tree/27531fc846efac18206c65e0c09ad36cce514c76) |
-| Wi-Fi | [MiCode WLAN / dipper-q-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/e9c485b6ff4282c649ea4cff5116a613b0678cb4) |
-| SUSFS | [wxx9248 Linux 4.9 移植](https://github.com/wxx9248/susfs4ksu/tree/71345ded5af28f55d76ebcdc7a9df9cea56111e1)，[上游项目](https://gitlab.com/simonpunk/susfs4ksu) |
-| 工具链 | Android 10 GCC 4.9，固定提交见 [pins.json](pins.json) |
+| VT 4.7.7 设备发现与握手 | 真机通过 |
+| 自身进程内存读写 | 已实现并自测 |
+| 跨进程内存读写 | 已实现，专用子进程测试通过 |
+| 模块基址查询 | 已实现，自身/子进程测试通过 |
+| 硬件断点及命中查询 | 未实现，返回 `EOPNOTSUPP` |
+| tracking | 未实现，返回 `EOPNOTSUPP` |
+| 完整 PTE 接口 | 未完成 |
+| 32 位兼容调用 | 不支持，返回 `EOPNOTSUPP` |
 
-本仓库脚本采用 **GPL-2.0-only**；上游代码遵循各自许可。
+每次 ioctl 检查 `CAP_SYS_RAWIO`，单次内存操作上限为 **64 KiB**。跨进程访问通过 `/proc/<pid>/mem`，沿用调用者凭据及 procfs 的 ptrace/LSM 权限检查。模块查询读取 `/proc/<pid>/maps`，按文件名或完整路径匹配，返回首个匹配映射起始地址；未找到时返回基址 0。
+
+模块和设备节点保持可见，没有实现原驱动中的隐藏逻辑。
+
+## 自动安装失败的定位
+
+原程序先枚举 `/dev` 下的 6 位字母数字设备名，再发送读取命令 `0x02813449`，请求内容为：
+
+```text
+pid=-1, addr=0, buffer=0, size=0
+```
+
+它依赖该无效请求的错误码判断是否找到驱动。原驱动返回原始 `-1`，在用户态表现为 `EPERM`；v0.2 返回 `EINVAL`，因此被原程序排除。
+
+v0.3 增加 6 位可见端点，并仅对这个精确的无效读取请求兼容 `EPERM`。此路径不访问内存，不返回伪造的读取成功。此次修复已使原版 VT 跳过自动刷入；未据此宣称原版自动安装器支持所有 4.9 内核。
+
+## 协议与构建
+
+协议证据来自 VT 4.7.7 内置第 7 份驱动（标记为 `4.14.117-perf+`）保留的 DWARF、函数名及重定位反汇编。离线检查已核对 **29 个字段偏移、5 个结构体大小、9 个命令号**。
+
+| 原始命令号 | 接口 |
+| --- | --- |
+| `0x02813441` | 安装硬件断点 |
+| `0x02813442` | 查询断点命中 |
+| `0x02813443` | 启用硬件断点 |
+| `0x02813444` | 清除全部硬件断点 |
+| `0x02813445` | 禁用硬件断点 |
+| `0x02813446` | 更新 tracking 数据 |
+| `0x02813449` | 读取进程内存 |
+| `0x02813450` | 写入进程内存 |
+| `0x02813451` | 查询模块基址 |
+
+这些是原始整数命令号，不使用 `_IOWR` 重新计算。该证据不证明所有内置驱动或主程序功能使用完全相同的协议。
+
+### GitHub Actions
+
+打开 [Build VT ABI diagnostic module for dipper 4.9](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/workflows/build-vt-probe.yml)，点击 **Run workflow**，分支选择 **`vt-abi-probe-4.9`**。
+
+构建使用固定版本源码、工具链和匹配配置，准备内核头文件与构建工具，再以外部模块方式生成 `.ko`，核对 ELF 架构、vermagic 和所有导入符号 CRC。此工作流不生成刷机镜像，不安装驱动。仅修改根目录 README 不会触发构建。
+
+匹配依据：
+
+- 内核源码：[MiCode / dipper-q-oss，dcfb167](https://github.com/MiCode/Xiaomi_Kernel_OpenSource/tree/dcfb1676925aec83b06ae04fd8ca989ced75067c)。
+- 完整权威符号表：11,641 个导出符号，`module_layout` CRC 为 `0x2ee5b3bb`。
+- 完整符号表 SHA256：`a5cac55aa1398925453e75aa82f527d8cdb2386b4242cdb05ab3312b651aad80`。
+- 内核配置 SHA256：`cc904ba698d456659efb8eb85082e475c7e29142a4cf81dea3011d5b697faa9a`，与测试手机导出的配置一致。
+
+### 本地构建
+
+需要 Linux、与目标手机匹配且已准备好的内核构建目录、匹配的 `Module.symvers` 以及 AArch64 工具链。在仓库根目录执行：
+
+```sh
+python3 vt-prototype/verify_abi.py
+make -C vt-prototype \
+  KDIR=/absolute/path/to/matching/kernel-out \
+  ARCH=arm64 \
+  CROSS_COMPILE=/absolute/path/to/gcc64/bin/aarch64-linux-android-
+```
+
+单独运行 `modules_prepare` 不会生成匹配的完整 `Module.symvers`。
+
+## 源码导航
+
+| 路径 | 内容 |
+| --- | --- |
+| [vt-prototype/](vt-prototype/) | 外部模块、协议头、自测程序与校验脚本 |
+| [protocol-analysis/protocol-evidence.json](protocol-analysis/protocol-evidence.json) | 协议布局与命令的分析证据 |
+| [vt-prototype/build-actions.sh](vt-prototype/build-actions.sh) | 外部模块构建入口 |
+| [.github/workflows/build-vt-probe.yml](.github/workflows/build-vt-probe.yml) | GitHub Actions 工作流 |
+| [pins.json](pins.json) | 固定来源及工具链记录 |
+
+根目录本文记录 v0.3 真机验证后的状态；子目录中的早期阶段说明若仍写有“待验证”，以本文的已验证版本和功能范围为准。
