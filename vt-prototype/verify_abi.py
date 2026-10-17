@@ -1,0 +1,76 @@
+"""Check the actual C header layout against the recovered DWARF evidence."""
+from pathlib import Path
+import ctypes as c
+import json
+import re
+
+root = Path(__file__).resolve().parent
+evidence = json.loads((root.parent / 'protocol-analysis/protocol-evidence.json').read_text(encoding='utf-8'))
+header = (root / 'vt_protocol.h').read_text(encoding='utf-8')
+types = {'__s32': c.c_int32, '__u32': c.c_uint32, '__u64': c.c_uint64,
+         '__u8': c.c_uint8, 'float': c.c_float}
+names = {'vt_copy_memory': '_COPY_MEMORY', 'vt_module_base': '_MODULE_BASE',
+         'vt_hw_bp_info': '_HW_BP_INFO', 'vt_hwbp_hit_args': '_HWBP_HIT_ARGS',
+         'vt_tracking_data': '_TRACKING_DATA'}
+checked = 0
+for name, body in re.findall(r'struct (\w+)\s*\{(.*?)\};', header, re.S):
+    fields = []
+    for declaration in body.split(';'):
+        declaration = declaration.strip()
+        if not declaration:
+            continue
+        typ, variables = declaration.split(None, 1)
+        for var in variables.split(','):
+            match = re.fullmatch(r'(\w+)((?:\[\d+\])*)', var.strip())
+            assert match, declaration
+            field_type = types[typ]
+            dims = [int(n) for n in re.findall(r'\[(\d+)\]', match[2])]
+            for length in reversed(dims):
+                field_type = field_type * length
+            fields.append((match[1], field_type))
+    layout = type(name, (c.Structure,), {'_fields_': fields})
+    original = evidence[names[name]]
+    assert c.sizeof(layout) == original['size'], (name, c.sizeof(layout), original['size'])
+    for member in original['members']:
+        assert getattr(layout, member['name']).offset == member['offset'], (name, member)
+        checked += 1
+    print(f'{name}: size {c.sizeof(layout)}, all recovered member offsets match')
+
+commands = {name: int(value, 16) for name, value in re.findall(r'#define (VT_\w+)\s+(0x[0-9a-fA-F]+)U', header)}
+dispatch = evidence['dispatch_table']
+for name, value in commands.items():
+    assert hex(value) in dispatch, name
+assert dispatch[hex(commands['VT_MEMORY_READ'])] == '0x734'
+assert dispatch[hex(commands['VT_MEMORY_WRITE'])] == '0x790'
+assert dispatch[hex(commands['VT_MODULE_BASE'])] == '0x7f0'
+print(f'PASS: {checked} field offsets, 5 structure sizes, {len(commands)} command values')
+
+# The recovered hiding logic must stay wired to the recovered evidence.
+source = (root / 'vt_abi_probe.c').read_text(encoding='utf-8')
+hide = evidence['hide_logic']
+name_evidence = hide['random_device_name']
+assert name_evidence['charset'] in source, 'recovered charset not used'
+assert f'#define VT_NAME_LEN {name_evidence["name_length"]}' in source, 'name length drifted'
+assert 'get_random_bytes(' in source, 'random name entropy missing'
+required_calls = [
+    'list_del_init(&THIS_MODULE->list)',
+    'kobject_del(&THIS_MODULE->mkobj.kobj)',
+    'device_destroy(node->class, node->dev)',
+    'class_destroy(node->class)',
+    '__class_create(THIS_MODULE, node->name, &vt_class_key)',
+    'device_create(node->class, NULL, node->dev, NULL, "%s", node->name)',
+]
+for call in required_calls:
+    assert call in source, f'hiding step missing: {call}'
+assert '.open = vt_open' in source and '.release = vt_release' in source, 'node hooks missing'
+assert 'static bool hide_module = true;' in source, 'module hiding is not the default'
+assert 'module_param(hide_module, bool, 0400)' in source, 'hide_module override missing'
+assert hide['dispatch_open']['device_destroy'] == '0xb88'
+assert hide['dispatch_open']['class_destroy'] == '0xb90'
+assert hide['dispatch_close']['class_create'] == '0xbe4'
+assert hide['dispatch_close']['device_create'] == '0xc2c'
+assert hide['init_module']['kobject_del'] == '0x1cc'
+print(f'PASS: hiding logic wired to recovered offsets '
+      f'(name {name_evidence["name_length"]}x{name_evidence["charset_length"]} charset, '
+      f'{len(required_calls)} steps)')
+

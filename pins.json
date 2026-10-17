@@ -1,0 +1,18 @@
+{
+  "kernel": {
+    "repository": "https://github.com/MiCode/Xiaomi_Kernel_OpenSource",
+    "ref": "dcfb1676925aec83b06ae04fd8ca989ced75067c",
+    "branch": "dipper-q-oss"
+  },
+  "sukisu": {
+    "repository": "https://github.com/SukiSU-Ultra/SukiSU-Ultra",
+    "ref": "2d1de629d4204d25cc0c8927b959d9135d9781f4",
+    "branch": "builtin"
+  },
+  "gcc64": {
+    "ref": "84fb09fafc92a3d9b4d160f049d46c3c784cc941"
+  },
+  "gcc32": {
+    "ref": "5a8beef7b1aa2c8ca0dfe4a00358559d12dfa3b6"
+  }
+}

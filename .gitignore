@@ -1,0 +1,9 @@
+work/
+out/
+artifacts/
+__pycache__/
+*.img
+*.img.gz
+*.apk
+*.zip
+*.log

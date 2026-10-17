@@ -1,0 +1,32 @@
+name: Build VT ABI diagnostic module for dipper 4.9
+on:
+  workflow_dispatch:
+  push:
+    branches: [vt-abi-probe-4.9]
+    paths:
+      - '.github/workflows/build-vt-probe.yml'
+      - 'vt-prototype/**'
+      - 'protocol-analysis/protocol-evidence.json'
+permissions:
+  contents: read
+concurrency:
+  group: vt-abi-probe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  module:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential bc flex bison libssl-dev libelf-dev libncurses5 libtinfo5 python3 git curl zip
+      - name: Prepare matching headers and build diagnostic module
+        run: bash vt-prototype/build-actions.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vt-abi-probe-dipper-4.9
+          path: |
+            vt-probe-artifacts/
+            build.log
+          retention-days: 14
