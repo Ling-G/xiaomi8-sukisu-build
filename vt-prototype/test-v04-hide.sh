@@ -24,14 +24,15 @@ six_char_devices() {
     done
 }
 
-# The driver publishes exactly one endpoint with a random six-character name,
-# so "already loaded" is detected by any six-character node whose class exists,
-# not by a fixed name. A hidden module never appears in /proc/modules.
+# The driver publishes exactly one endpoint with a random six-character name and
+# no fixed name, so "already loaded" cannot be inferred from a name pattern:
+# /dev also holds iceufs and rfkill, which are six characters and have a
+# /sys/class entry of their own. Use the node the driver announced in dmesg,
+# which survives hiding, plus the visible module entry when hide_module=0.
 already_loaded() {
     grep -q '^vt_abi_probe ' /proc/modules && return 0
-    for name in $(six_char_devices); do
-        [ -e "/sys/class/$name" ] && return 0
-    done
+    last=$(dmesg | grep 'discovery node /dev/' | tail -n 1 | awk '{print $NF}')
+    [ -n "$last" ] && [ -e "$last" ] && return 0
     return 1
 }
 
