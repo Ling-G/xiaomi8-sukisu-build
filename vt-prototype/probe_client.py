@@ -35,8 +35,8 @@ def main():
         request.size = c.sizeof(replacement)
         assert invoke(fd, 0x02813450, request) == 0
         assert source.raw == replacement.raw
-        request.pid = os.getpid() + 1
-        expect_error(errno.EPERM, lambda: invoke(fd, 0x02813449, request))
+        request.pid = -1
+        expect_error(errno.EINVAL, lambda: invoke(fd, 0x02813449, request))
         request.pid = os.getpid()
         request.size = 65537
         expect_error(errno.E2BIG, lambda: invoke(fd, 0x02813449, request))
@@ -44,7 +44,7 @@ def main():
         expect_error(errno.EINVAL, lambda: invoke(fd, 0, request))
     finally:
         os.close(fd)
-    print('PASS: self read/write, target restriction, size cap, unsupported and unknown commands')
+    print('PASS: self read/write, invalid PID, size cap, unsupported and unknown commands; use native client for child-process tests')
 
 if __name__ == '__main__':
     main()

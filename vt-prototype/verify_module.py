@@ -50,7 +50,7 @@ def verify(module, symvers, output):
               'symvers_sha256': hashlib.sha256(symvers.read_bytes()).hexdigest(),
               'checked_symbol_crcs': checked,
               'required_imports': sorted(undefined), 'hardware_validation': 'not performed',
-              'scope': 'diagnostic subset; self-process copies only; not a complete VT driver'}
+              'scope': 'incomplete VT interface; procfs-authorized memory access and module lookup; hardware breakpoint/tracking not implemented'}
     output.write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(report, indent=2))
 
