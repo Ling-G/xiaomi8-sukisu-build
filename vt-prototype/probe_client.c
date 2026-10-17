@@ -33,7 +33,7 @@ static void record(const char *action, const char *path, long result, unsigned l
     int n;
     if (!active()) return;
     n=snprintf(line,sizeof(line),"[VT-DISC] %s %s result=%ld extra=0x%lx\n",action,path?path:"-",result,extra);
-    if (n>0) raw4(64,2,(long)line,n<(int)sizeof(line)?n:(int)sizeof(line)-1);
+    if (n>0) raw4(64,2,(long)line,n<(int)sizeof(line)?n:(int)sizeof(line)-1,0);
 }
 int stat(const char *path, void *buffer)
 {
