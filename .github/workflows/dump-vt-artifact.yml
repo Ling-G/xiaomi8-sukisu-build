@@ -11,14 +11,17 @@ jobs:
       - uses: actions/checkout@v4
       - env: {T: "${{ secrets.GITHUB_TOKEN }}"}
         run: |
+          A=d/vt-probe-artifacts
           curl -sSL -H "Authorization: Bearer $T" https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/12103862233/zip -o a.zip
           unzip -q a.zip -d d
-          base64 -w 0 d/vt-probe-artifacts/vt_abi_probe.ko > m.b64
-          cp d/vt-probe-artifacts/module-check.json .
-          sha256sum d/vt-probe-artifacts/vt_abi_probe.ko > m.sha256
+          base64 -w 0 $A/vt_abi_probe.ko > m.b64
+          base64 -w 0 $A/vt_probe_test > p.b64
+          base64 -w 0 $A/vt_hold_test > h.b64
+          cp $A/module-check.json .
+          sha256sum $A/vt_abi_probe.ko $A/vt_probe_test $A/vt_hold_test > m.sha256
           git config user.name b
           git config user.email b@b
           git checkout --orphan artifact-dump
-          git add -f m.b64 module-check.json m.sha256
+          git add -f m.b64 p.b64 h.b64 module-check.json m.sha256
           git commit -m dump
           git push -f origin artifact-dump
