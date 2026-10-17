@@ -2,6 +2,7 @@
 #ifdef VT_DISCOVERY_TRACE
 extern void *dlsym(void *, const char *);
 extern int snprintf(char *, unsigned long, const char *, ...);
+extern int *__errno(void);
 static long raw4(long nr, long a, long b, long c, long d)
 {
     register long x0 __asm__("x0") = a;
@@ -83,12 +84,20 @@ int ioctl(int fd, unsigned long command, ...)
     int (*real)(int,unsigned long,...)=dlsym((void *)-1L,"ioctl");
     __builtin_va_list args;
     unsigned long argument;
-    int result;
+    int result, saved_errno;
     __builtin_va_start(args,command);
     argument=__builtin_va_arg(args,unsigned long);
     __builtin_va_end(args);
+    if (command==0x02813449UL && argument && active()) {
+        struct { int pid; unsigned int padding; unsigned long addr, buffer, size; } *r=(void *)argument;
+        record("READ.pid",0,r->pid,r->addr);
+        record("READ.size",0,r->size,r->buffer);
+    }
     result=real(fd,command,argument);
+    saved_errno=*__errno();
     record("ioctl",0,result,command);
+    if (result<0) record("ioctl.errno",0,saved_errno,command);
+    *__errno()=saved_errno;
     return result;
 }
 #else
