@@ -61,8 +61,10 @@ report['symvers_scope']='Subset of provided table sufficient for diagnostic modu
 PY
 "$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -ffreestanding -fno-builtin -fno-stack-protector \
     -nostdlib -static -Wl,--build-id=none -Wl,-e,_start vt-prototype/probe_client.c -o vt-probe-artifacts/vt_probe_test
+"$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -fPIC -shared -ffreestanding -fno-builtin -fno-stack-protector \
+    -nostdlib -DVT_DISCOVERY_TRACE vt-prototype/probe_client.c -o vt-probe-artifacts/vt_discovery_trace.so
 cp artifacts/kernel.config artifacts/kernelrelease.txt vt-probe-artifacts/
 cp out/Module.symvers vt-probe-artifacts/Module.symvers
 cp vt-prototype/README.md vt-probe-artifacts/README-source-status.md
 git rev-parse HEAD > vt-probe-artifacts/source-commit.txt
-(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_probe_test Module.symvers kernel.config module-check.json > SHA256SUMS)
+(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_probe_test vt_discovery_trace.so Module.symvers kernel.config module-check.json > SHA256SUMS)

@@ -1,3 +1,97 @@
+/* Standalone AArch64 client or read-only discovery tracing interposer. */
+#ifdef VT_DISCOVERY_TRACE
+extern void *dlsym(void *, const char *);
+extern int snprintf(char *, unsigned long, const char *, ...);
+static long raw4(long nr, long a, long b, long c, long d)
+{
+    register long x0 __asm__("x0") = a;
+    register long x1 __asm__("x1") = b;
+    register long x2 __asm__("x2") = c;
+    register long x3 __asm__("x3") = d;
+    register long x8 __asm__("x8") = nr;
+    __asm__ volatile("svc 0" : "+r"(x0) : "r"(x1), "r"(x2), "r"(x3), "r"(x8) : "memory", "cc");
+    return x0;
+}
+static int prefix(const char *a, const char *b)
+{
+    while (*b) { if (*a++ != *b++) return 0; }
+    return 1;
+}
+static int active(void)
+{
+    char path[256];
+    long n = raw4(78, -100, (long)"/proc/self/exe", (long)path, sizeof(path)-1);
+    long i;
+    if (n <= 0) return 0;
+    path[n] = 0;
+    for (i=0; i<n; ++i) if (prefix(path+i, "/VTKernel.")) return 1;
+    return 0;
+}
+static void record(const char *action, const char *path, long result, unsigned long extra)
+{
+    char line[512];
+    int n;
+    if (!active()) return;
+    n=snprintf(line,sizeof(line),"[VT-DISC] %s %s result=%ld extra=0x%lx\n",action,path?path:"-",result,extra);
+    if (n>0) raw4(64,2,(long)line,n<(int)sizeof(line)?n:(int)sizeof(line)-1);
+}
+int stat(const char *path, void *buffer)
+{
+    int (*real)(const char *,void *)=dlsym((void *)-1L,"stat");
+    int result=real(path,buffer);
+    if (path && prefix(path,"/dev/")) {
+        record("stat",path,result,0);
+        if (!result) {
+            unsigned long *words=buffer;
+            record("stat-word2",path,words[2],words[3]);
+            record("stat-word4",path,words[4],words[5]);
+        }
+    }
+    return result;
+}
+int __open_2(const char *path, int flags)
+{
+    int (*real)(const char *,int)=dlsym((void *)-1L,"__open_2");
+    int result=real(path,flags);
+    if (path && prefix(path,"/dev/")) record("__open_2",path,result,flags);
+    return result;
+}
+int open(const char *path, int flags, ...)
+{
+    int (*real)(const char *,int,...)=dlsym((void *)-1L,"open");
+    __builtin_va_list args;
+    unsigned int mode=0;
+    int result;
+    if ((flags & 0100) || ((flags & 020000000)==020000000)) {
+        __builtin_va_start(args,flags);
+        mode=__builtin_va_arg(args,unsigned int);
+        __builtin_va_end(args);
+    }
+    result=real(path,flags,mode);
+    if (path && prefix(path,"/dev/")) record("open",path,result,flags);
+    return result;
+}
+void *opendir(const char *path)
+{
+    void *(*real)(const char *)=dlsym((void *)-1L,"opendir");
+    void *result=real(path);
+    if (path && prefix(path,"/dev")) record("opendir",path,(long)result,0);
+    return result;
+}
+int ioctl(int fd, unsigned long command, ...)
+{
+    int (*real)(int,unsigned long,...)=dlsym((void *)-1L,"ioctl");
+    __builtin_va_list args;
+    unsigned long argument;
+    int result;
+    __builtin_va_start(args,command);
+    argument=__builtin_va_arg(args,unsigned long);
+    __builtin_va_end(args);
+    result=real(fd,command,argument);
+    record("ioctl",0,result,command);
+    return result;
+}
+#else
 /* Standalone AArch64 test client; never loads or unloads a module. */
 #define VT_USERSPACE_FREESTANDING
 #include "vt_protocol.h"
@@ -164,3 +258,4 @@ void _start(void)
     syscall4(94, result, 0, 0, 0);
     for (;;) {}
 }
+#endif
