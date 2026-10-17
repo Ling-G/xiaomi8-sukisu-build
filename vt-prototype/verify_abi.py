@@ -44,3 +44,33 @@ assert dispatch[hex(commands['VT_MEMORY_READ'])] == '0x734'
 assert dispatch[hex(commands['VT_MEMORY_WRITE'])] == '0x790'
 assert dispatch[hex(commands['VT_MODULE_BASE'])] == '0x7f0'
 print(f'PASS: {checked} field offsets, 5 structure sizes, {len(commands)} command values')
+
+# The recovered hiding logic must stay wired to the recovered evidence.
+source = (root / 'vt_abi_probe.c').read_text(encoding='utf-8')
+hide = evidence['hide_logic']
+name_evidence = hide['random_device_name']
+assert name_evidence['charset'] in source, 'recovered charset not used'
+assert f'#define VT_NAME_LEN {name_evidence["name_length"]}' in source, 'name length drifted'
+assert 'get_random_bytes(' in source, 'random name entropy missing'
+required_calls = [
+    'list_del_init(&THIS_MODULE->list)',
+    'kobject_del(&THIS_MODULE->mkobj.kobj)',
+    'device_destroy(node->class, node->dev)',
+    'class_destroy(node->class)',
+    '__class_create(THIS_MODULE, node->name, &vt_class_key)',
+    'device_create(node->class, NULL, node->dev, NULL, "%s", node->name)',
+]
+for call in required_calls:
+    assert call in source, f'hiding step missing: {call}'
+assert '.open = vt_open' in source and '.release = vt_release' in source, 'node hooks missing'
+assert 'static bool hide_module = true;' in source, 'module hiding is not the default'
+assert 'module_param(hide_module, bool, 0400)' in source, 'hide_module override missing'
+assert hide['dispatch_open']['device_destroy'] == '0xb88'
+assert hide['dispatch_open']['class_destroy'] == '0xb90'
+assert hide['dispatch_close']['class_create'] == '0xbe4'
+assert hide['dispatch_close']['device_create'] == '0xc2c'
+assert hide['init_module']['kobject_del'] == '0x1cc'
+print(f'PASS: hiding logic wired to recovered offsets '
+      f'(name {name_evidence["name_length"]}x{name_evidence["charset_length"]} charset, '
+      f'{len(required_calls)} steps)')
+

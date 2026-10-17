@@ -1,6 +1,6 @@
 # 小米 8 VT 外部驱动（4.9.186）
 
-本分支 `vt-abi-probe-4.9` 开发独立加载的 **`vt_abi_probe.ko`**。当前 **v0.3 已通过真机加载、自测和原版 VT 4.7.7 识别测试**，无需重新封装或刷入 boot 镜像。
+本分支 `vt-abi-probe-4.9` 开发独立加载的 **`vt_abi_probe.ko`**。**v0.3 已通过真机加载、自测和原版 VT 4.7.7 识别测试**，无需重新封装或刷入 boot 镜像。**v0.4 增加了原驱动中的模块隐藏与设备隐藏逻辑，源码和离线校验已完成，尚待 Actions 构建与真机验证。**
 
 **这仍是部分实现：硬件断点、tracking 和完整 PTE 接口尚未完成。识别成功不代表 VT 的全部功能可用。**
 
@@ -13,7 +13,7 @@
 | 设备 | 小米 8 / dipper，AArch64 |
 | 系统 | MIUI V12.5.2.0.QEACNXM / Android 10 |
 | 当前内核 | `4.9.186-perf-g10af704` |
-| 模块版本 | `0.3` |
+| 模块版本 | `0.3`（已验证）、`0.4`（隐藏逻辑，待构建与真机验证） |
 | 主程序 | 原版 VT 4.7.7 |
 | 模块 vermagic | `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64` |
 
@@ -29,10 +29,13 @@
 | --- | --- |
 | `vt_abi_probe.ko` | 独立内核模块 |
 | `vt_probe_test` | 原生 AArch64 自测程序，不会自行加载或卸载模块 |
+| `vt_hold_test` | v0.4 起提供：打开诊断端点并保持 5 秒，用于观察节点隐藏 |
 | `module-check.json`、`SHA256SUMS` | ABI 检查结果和校验清单 |
 | `kernel.config`、`kernelrelease.txt`、`Module.symvers` | 构建配置及符号记录 |
 
 Actions 产物保留 **14 天**。其中的 `Module.symvers` 是本模块所需符号的子集，不能替代完整内核符号表。开发用的 `vt_discovery_trace.so` 无需安装，正常启动不依赖它。
+
+以上提交与校验值对应已验证的 v0.3。v0.4 的提交号、Actions 运行号和 `vt_abi_probe.ko` SHA256 需在该轮构建和真机验证完成后填入，在此之前不要沿用 v0.3 的校验值。
 
 已验证 v0.3 的 `vt_abi_probe.ko` SHA256：
 
@@ -59,12 +62,14 @@ insmod /data/adb/vt_compat_4.9.186_v03.ko
 sh /data/adb/VT内核-4.7.7.sh
 ```
 
-如模块已经加载，直接启动 VT，无需重复 `insmod`。加载后会创建两个可见节点：
+如模块已经加载，直接启动 VT，无需重复 `insmod`。v0.3 加载后会创建两个可见节点：
 
 - `/dev/VTp03A`：供原版 VT 枚举识别的 6 位名称端点。
 - `/dev/vt_abi_probe`：诊断和自测端点。
 
 两者权限均为 `root:root 0600`。本项目没有配置开机自动加载，重启后需重新执行 `insmod`。
+
+v0.4 改为原驱动的节点模型：6 位随机字母数字名端点（每次加载名称不同，不再固定为 `VTp03A`）+ `/dev/vt_abi_probe`。任一节点被打开后会立即从 `/dev` 消失，最后一个描述符关闭后按同一名称恢复，详见[隐藏逻辑](#隐藏逻辑v04)。
 
 卸载前退出 VT 及其他使用该设备的程序，再在 Root 终端执行：
 
@@ -74,7 +79,15 @@ rmmod vt_abi_probe
 
 如果模块仍被占用，先结束使用它的进程并等待文件描述符关闭。
 
+**v0.4 默认 `hide_module=1`**：模块会把自己从内核模块链表移除，`rmmod` 返回 `ENOENT`，只能重启后重新加载。需要保留卸载能力时用下面的方式加载：
+
+```sh
+insmod /data/adb/vt_compat_4.9.186_v04.ko hide_module=0
+```
+
 ## 真机验证结果
+
+以下为 **v0.3** 的结果。v0.4 的隐藏逻辑尚未经过真机验证，其记录不得沿用本节结论。
 
 2026-10-17，在原脚本未修改、未注入跟踪库的情况下，VT 输出：
 
@@ -122,6 +135,9 @@ echo $?
 | 自身进程内存读写 | 已实现并自测 |
 | 跨进程内存读写 | 已实现，专用子进程测试通过 |
 | 模块基址查询 | 已实现，自身/子进程测试通过 |
+| 6 位随机端点名（原 `get_rand_str`） | v0.4 已实现，待真机验证 |
+| 设备节点打开后隐藏、关闭后恢复 | v0.4 已实现，待真机验证 |
+| 模块从 `/proc/modules`、`/sys/module` 隐藏 | v0.4 已实现，待真机验证 |
 | 硬件断点及命中查询 | 未实现，返回 `EOPNOTSUPP` |
 | tracking | 未实现，返回 `EOPNOTSUPP` |
 | 完整 PTE 接口 | 未完成 |
@@ -129,7 +145,25 @@ echo $?
 
 每次 ioctl 检查 `CAP_SYS_RAWIO`，单次内存操作上限为 **64 KiB**。跨进程访问通过 `/proc/<pid>/mem`，沿用调用者凭据及 procfs 的 ptrace/LSM 权限检查。模块查询读取 `/proc/<pid>/maps`，按文件名或完整路径匹配，返回首个匹配映射起始地址；未找到时返回基址 0。
 
-模块和设备节点保持可见，没有实现原驱动中的隐藏逻辑。
+## 隐藏逻辑（v0.4）
+
+从内置第 7 份驱动的 `init_module`、`dispatch_open`、`dispatch_close` 和 `get_rand_str` 反汇编恢复，证据记录在 [protocol-evidence.json](protocol-analysis/protocol-evidence.json) 的 `hide_logic` 段：
+
+| 阶段 | 原驱动行为 | 恢复依据 |
+| --- | --- | --- |
+| `init_module` | `get_rand_str` 用 62 字符表 + `get_random_bytes` 生成 6 位名称 | `get_rand_str` `0x334`，每字符一次 4 字节随机数 |
+| `init_module` | `device_create` 发布节点 | `0x164` |
+| `init_module` 末尾 | `list_del_init(&THIS_MODULE->list)` 后 `kobject_del(&THIS_MODULE->mkobj.kobj)` | `0x1b4`–`0x1cc` |
+| `dispatch_open` | `device_destroy` + `class_destroy`，节点立即消失 | `0xb88`、`0xb90` |
+| `dispatch_close` | `__class_create` + `device_create`，按同一 `dev_t` 与名称恢复 | `0xbe4`、`0xc2c` |
+
+因此 v0.4：
+
+- 每次加载生成不同的 6 位字母数字节点名，原程序仍按 6 位字母数字规则枚举到它。
+- 节点被打开后不再出现在 `/dev`，VT 依靠已持有的描述符继续工作；最后一个描述符关闭后节点恢复。
+- 模块不再出现在 `/proc/modules`、`lsmod`、`/sys/module`，kallsyms 的模块遍历也不再列出其符号。该步骤不可逆，`rmmod` 会失败，需要重启；测试迭代时用 `insmod ... hide_module=0`。
+
+只复刻了上述机制。原驱动中没有发现 `/proc` 过滤、系统调用挂钩或进程隐藏代码，本实现也没有添加。`list_del_init` 在原驱动中同样未持有 `module_mutex`，本实现与其一致，风险相同。
 
 ## 自动安装失败的定位
 

@@ -1,6 +1,6 @@
 # VT 通信接口诊断原型
 
-状态：v0.2 已完成独立 `.ko` 编译、真机加载、自身和专用子进程读写、模块查询及卸载测试。v0.3 增加原主程序设备发现适配，尚待本轮验证。它还不是完整 VT 驱动。
+状态：v0.3 已完成独立 `.ko` 编译、真机加载、自身和专用子进程读写、模块查询、卸载测试，并已通过原版 VT 4.7.7 的识别测试。v0.4 在此之上实现原驱动中的模块隐藏与设备隐藏逻辑，源码与离线校验已完成，尚待构建和真机验证。它还不是完整 VT 驱动。
 
 ## 已确认的证据
 
@@ -28,15 +28,24 @@
 
 ## 原型范围
 
-`vt_abi_probe.c` 提供可见的 `/dev/vt_abi_probe` 诊断端点，以及供原程序枚举的 6 位字母数字端点 `/dev/VTp03A`。两者使用相同的处理函数，权限均为 0600，不会在打开后隐藏。单次内存操作上限 64 KiB，每次调用检查 `CAP_SYS_RAWIO`。自身进程使用标准用户地址拷贝；其他进程通过 `/proc/<pid>/mem` 访问，打开文件时继续使用调用者凭据，接受 procfs 原有的 ptrace/LSM 检查。模块查询读取 `/proc/<pid>/maps`，返回第一个匹配文件名或完整路径的映射起始地址，未找到时基址为 0。
+`vt_abi_probe.c` 按原驱动的机制创建字符设备：`alloc_chrdev_region` + `cdev_add` + `__class_create` + `device_create`，共两个端点。该内核未启用 `CONFIG_DEVTMPFS`，`/dev` 节点由 Android ueventd 依据 uevent 创建，默认规则为字符设备 `root:root 0600`；这一点需在真机上用 `ls -l` 复核。
 
-硬件断点和 tracking 尚未实现，对这些已知命令返回 `EOPNOTSUPP`，不伪造成功。错误路径使用标准 errno，并不逐条复刻原驱动的错误返回。没有实现原驱动中的模块隐藏或设备隐藏逻辑。
+- 6 位随机字母数字名端点：名称在 `init_module` 中用 `get_random_bytes` 按原驱动的字符表和取模方式生成，供原程序枚举识别。
+- `/dev/vt_abi_probe`：固定名称的诊断与自测端点。
+
+两个端点共用同一处理函数。任一端点被打开时，其 class 与设备节点被销毁；最后一个描述符关闭后，按原 `dev_t` 与同一名称重新创建。这与原 `dispatch_open`/`dispatch_close` 的行为一致。
+
+模块隐藏：`init_module` 末尾执行 `list_del_init(&THIS_MODULE->list)` 与 `kobject_del(&THIS_MODULE->mkobj.kobj)`，之后 `/proc/modules`、`lsmod`、`/sys/module/vt_abi_probe` 均不再出现该模块，kallsyms 的模块遍历也不再列出其符号。该操作不可逆，`rmmod` 会返回 `ENOENT`，需要重启才能卸载；测试迭代时用 `insmod vt_abi_probe.ko hide_module=0` 保持可卸载。
+
+单次内存操作上限 64 KiB，每次调用检查 `CAP_SYS_RAWIO`。自身进程使用标准用户地址拷贝；其他进程通过 `/proc/<pid>/mem` 访问，打开文件时继续使用调用者凭据，接受 procfs 原有的 ptrace/LSM 检查。模块查询读取 `/proc/<pid>/maps`，返回第一个匹配文件名或完整路径的映射起始地址，未找到时基址为 0。
+
+硬件断点和 tracking 尚未实现，对这些已知命令返回 `EOPNOTSUPP`，不伪造成功。错误路径使用标准 errno，并不逐条复刻原驱动的错误返回。隐藏逻辑只复刻上述四处机制；原驱动中没有找到 `/proc` 过滤、系统调用挂钩或进程隐藏代码。原驱动在执行 `list_del_init` 时不持有 `module_mutex`，本实现同样如此，风险与原驱动相同。
 
 启动跟踪确认：原程序会打开 6 位节点，发送 `VT_MEMORY_READ`，请求体为 `pid=-1, addr=0, buffer=0, size=0`，以错误码识别设备。原驱动在此路径返回原始 -1，即用户态 `EPERM`；v0.2 的 `EINVAL` 导致候选被排除。v0.3 仅对这个精确的无效读取请求兼容 `EPERM`，不执行内存访问，也不伪造成功。原程序实际识别状态须以本轮未修改、无跟踪注入的启动测试为准，PTE/断点功能依然不能描述为已实现。
 
 ## 验证与构建
 
-`python3 verify_abi.py` 会从实际头文件声明计算布局，并与 `../protocol-analysis/protocol-evidence.json` 中的 DWARF 证据对照。它不需要手机，也不加载模块。
+`python3 verify_abi.py` 会从实际头文件声明计算布局，并与 `../protocol-analysis/protocol-evidence.json` 中的 DWARF 证据对照；同时检查 `vt_abi_probe.c` 是否仍按恢复出的偏移实现隐藏步骤（随机名 6×62 字符表、`list_del_init`、`kobject_del`、`device_destroy`/`class_destroy`、`__class_create`/`device_create`），并核对证据中的地址。它不需要手机，也不加载模块。
 
 构建需要 Linux 环境、与当前手机一致且已准备好的内核构建目录及匹配的 `Module.symvers`，并使用原构建的 AArch64 GCC 工具链：
 
@@ -47,6 +56,6 @@ make KDIR=/absolute/path/to/matching/kernel-out \
 
 不能仅运行 `modules_prepare` 来生成匹配的 `Module.symvers`。本次已有用户提供的权威符号表：`build-actions.sh` 沿用固定版本的内核集成脚本，准备与手机完全相同配置的头文件和构建工具，再将所需符号的 CRC 子集交给 modpost 编译外部模块。随后用 `verify_module.py` 核对 ELF 架构、vermagic 和所有导入符号 CRC；每个导入也必须存在于用户提供的表格记录中。子集不是完整内核符号表，构建是否通过须以实际运行结果为准。
 
-`probe_client.py` 是可选的 Python 自测，覆盖自身内存读写、无效 PID、长度上限和错误命令。原生 AArch64 客户端 `probe_client.c` 还会创建专用子进程，核对跨进程读取、写入后的父子内存隔离、子进程对写入结果的确认，以及自身/子进程的模块基址查询。两种客户端都不自行安装模块。
+`probe_client.py` 是可选的 Python 自测，覆盖自身内存读写、无效 PID、长度上限和错误命令。原生 AArch64 客户端 `probe_client.c` 还会创建专用子进程，核对跨进程读取、写入后的父子内存隔离、子进程对写入结果的确认，以及自身/子进程的模块基址查询。`vt_hold_test.c` 编译出的 `vt_hold_test` 只负责打开诊断端点并保持 5 秒，用于从 shell 观察节点在打开期间消失、关闭后恢复。三个程序都不自行安装模块。
 
-后续需要：编译并验证 v0.2；继续分析主程序发现与连接流程。完整 VT 驱动还需要独立实现并验证余下功能。源码始终作为外部模块编译，不修改 main，不生成刷机镜像，不设置开机加载。
+后续需要：由 Actions 编译 v0.4，核对模块 SHA256、全部导入 CRC 与 vermagic，再在真机上按 `hide_module` 两种取值分别验证；之后才是硬件断点与 tracking 的独立实现。源码始终作为外部模块编译，不修改 main，不生成刷机镜像，不设置开机加载。

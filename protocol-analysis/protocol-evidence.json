@@ -213,5 +213,54 @@
     "0x2813450": "0x790",
     "0x2813451": "0x7f0"
   },
-  "rodata_hex": "1000000060000000bc0000000c010000140100006c010000a8030000a8030000c8010000a8030000a8030000a8030000a8030000a8030000a803000024020000840200000000000010000000180000002000000028000000300000003800000040000000480000005000000088ffffff10000000180000002000000028000000300000003800000040000000480000005000000058000000600000006800000070000000780000008000000088000000100000001c0000002800000034000000400000004c0000005800000064000000700000007c0000008800000094000000a0000000ac000000b8000000c4000000000000000000000000000000000000000000000000000000"
+  "rodata_hex": "1000000060000000bc0000000c010000140100006c010000a8030000a8030000c8010000a8030000a8030000a8030000a8030000a8030000a803000024020000840200000000000010000000180000002000000028000000300000003800000040000000480000005000000088ffffff10000000180000002000000028000000300000003800000040000000480000005000000058000000600000006800000070000000780000008000000088000000100000001c0000002800000034000000400000004c0000005800000064000000700000007c0000008800000094000000a0000000ac000000b8000000c4000000000000000000000000000000000000000000000000000000",
+  "hide_logic": {
+    "recovered_from": "module-7.ko (vermagic 4.14.117-perf+), DWARF names plus relocations",
+    "random_device_name": {
+      "symbol": "get_rand_str",
+      "text_start": "0x334",
+      "size": "0x188",
+      "charset": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+      "charset_length": 62,
+      "name_length": 6,
+      "per_character": "get_random_bytes(4 bytes), signed 32-bit remainder of the charset length, then magnitude",
+      "note": "the name is generated once in init_module and reused when the node is recreated"
+    },
+    "init_module": {
+      "text_start": "0x0",
+      "size": "0x1ec",
+      "device_create": "0x164",
+      "module_list_unlink": "0x1b4-0x1c8",
+      "module_list_unlink_ops": [
+        "x0 = (char *)__this_module + 8 + 0x48, the module mkobj kobject",
+        "next = list->next, prev = list->prev",
+        "next->prev = prev",
+        "prev->next = next",
+        "list->next = list, list->prev = list"
+      ],
+      "kobject_del": "0x1cc",
+      "kobject_del_target": "__this_module + 0x50 (struct module_kobject.kobj in 4.14.117)",
+      "effect": "the module disappears from /proc/modules, lsmod and /sys/module, and its exported symbols stop being listed by kallsyms module iteration"
+    },
+    "dispatch_open": {
+      "text_start": "0xb3c",
+      "size": "0x68",
+      "private_data_store": "0xb80",
+      "device_destroy": "0xb88",
+      "class_destroy": "0xb90",
+      "return": "always 0",
+      "effect": "the /dev entry is removed while any descriptor is open"
+    },
+    "dispatch_close": {
+      "text_start": "0xba4",
+      "size": "0xb4",
+      "class_create": "0xbe4",
+      "device_create": "0xc2c",
+      "effect": "class and node are recreated under the same dev_t and the same name, so the entry returns after the last descriptor closes"
+    },
+    "not_recovered": [
+      "no /proc filtering, syscall hooking or task hiding is present in the analysed driver",
+      "the driver never restores its module list entry, so rmmod is not possible after hiding"
+    ]
+  }
 }
