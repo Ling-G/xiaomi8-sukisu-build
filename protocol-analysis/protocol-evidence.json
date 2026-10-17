@@ -261,6 +261,20 @@
     "not_recovered": [
       "no /proc filtering, syscall hooking or task hiding is present in the analysed driver",
       "the driver never restores its module list entry, so rmmod is not possible after hiding"
-    ]
+    ],
+    "recognition_path": {
+      "shell_wrapper": "/data/adb/VT\u5185\u6838-4.7.7.sh is a 22 line self-extracting wrapper: gzip -dc the payload after #---BIN_DATA---# to /data/local/tmp/VTKernel.$$ (same name the trace interposer keys on), then exec it. It contains no module-list or insmod logic.",
+      "shell_wrapper_sha256": "f0212760aaf5244a87b744b12f9fda193dbb71930fddf348b516f69cd653e335",
+      "payload_strings_checked": [
+        "/proc/modules",
+        "lsmod",
+        "insmod",
+        "rmmod",
+        "finit_module",
+        "/sys/module"
+      ],
+      "payload_string_hits": 0,
+      "conclusion": "the client decides whether the driver is installed from /dev enumeration plus the 0x02813449 error code, never from the kernel module list, so unlinking the module from /proc/modules and /sys/module cannot change recognition"
+    }
   }
 }
