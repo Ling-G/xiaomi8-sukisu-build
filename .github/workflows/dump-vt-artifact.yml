@@ -1,0 +1,21 @@
+name: dump
+on: {workflow_dispatch: {}}
+permissions: {contents: write}
+jobs:
+  d:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - env: {T: "${{ secrets.GITHUB_TOKEN }}"}
+        run: |
+          curl -sSL -H "Authorization: Bearer $T" https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/12103862233/zip -o a.zip
+          unzip -q a.zip -d d
+          base64 -w 0 d/vt-probe-artifacts/vt_abi_probe.ko > m.b64
+          cp d/vt-probe-artifacts/module-check.json .
+          sha256sum d/vt-probe-artifacts/vt_abi_probe.ko > m.sha256
+          git config user.name b
+          git config user.email b@b
+          git checkout --orphan artifact-dump
+          git add -f m.b64 module-check.json m.sha256
+          git commit -m dump
+          git push -f origin artifact-dump
