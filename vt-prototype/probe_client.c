@@ -155,6 +155,11 @@ static int six_alnum(const char *name)
     return name[6] == 0;
 }
 
+/* Many six-character character devices exist (ashmem, binder, random, ...),
+ * and root can open several of them, so opening is not enough to identify the
+ * driver. Each candidate is probed with a module-base lookup for a name that
+ * cannot match: only the real driver answers this command, returning 0 with
+ * base 0. */
 static long open_discovery_node(void)
 {
     char buffer[2048];
@@ -183,8 +188,18 @@ static long open_discovery_node(void)
                 path[11] = 0;
                 fd = syscall4(56, -100, (long)path, 2 | 02000000, 0);
                 if (fd >= 0) {
-                    syscall4(57, dirfd, 0, 0, 0);
-                    return fd;
+                    struct vt_module_base probe;
+                    probe.pid = (int)syscall4(172, 0, 0, 0, 0);
+                    probe.reserved = 0;
+                    probe.name = (unsigned long)"vt_no_such_module_probe";
+                    probe.base = 0x1234;
+                    /* Only the VT driver answers this command at all. */
+                    if (syscall4(29, fd, VT_MODULE_BASE, (long)&probe, 0) == 0 &&
+                        probe.base == 0) {
+                        syscall4(57, dirfd, 0, 0, 0);
+                        return fd;
+                    }
+                    syscall4(57, fd, 0, 0, 0);
                 }
             }
             i += entry->d_reclen;

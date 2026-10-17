@@ -110,7 +110,7 @@ else
     echo NODE_PRESENT=0
 fi
 
-chmod 700 "$scratch/vt_probe_test" "$scratch/vt_hold_test"
+chmod 700 "$scratch/vt_probe_test"
 "$scratch/vt_probe_test"
 echo SELFTEST_STATUS=$?
 if node_present_within present; then
@@ -119,19 +119,26 @@ else
     echo NODE_AFTER_SELFTEST=0
 fi
 
-"$scratch/vt_hold_test" &
-hold_pid=$!
-if node_present_within absent; then
-    echo NODE_HIDDEN_WHILE_OPEN=1
+# Hold the endpoint open from the shell itself: an extra helper binary would
+# have to guess which six-character node belongs to the driver.
+if [ -n "$discovery" ] && [ -r "$node" ]; then
+    exec 3< "$node"
+    if node_present_within absent; then
+        echo NODE_HIDDEN_WHILE_OPEN=1
+    else
+        echo NODE_HIDDEN_WHILE_OPEN=0
+    fi
+    exec 3<&-
+    echo HOLD_STATUS=0
+    if node_present_within present; then
+        echo NODE_RESTORED_AFTER_CLOSE=1
+    else
+        echo NODE_RESTORED_AFTER_CLOSE=0
+    fi
 else
-    echo NODE_HIDDEN_WHILE_OPEN=0
-fi
-wait "$hold_pid"
-echo HOLD_STATUS=$?
-if node_present_within present; then
-    echo NODE_RESTORED_AFTER_CLOSE=1
-else
-    echo NODE_RESTORED_AFTER_CLOSE=0
+    echo NODE_HIDDEN_WHILE_OPEN=skipped
+    echo HOLD_STATUS=1
+    echo NODE_RESTORED_AFTER_CLOSE=skipped
 fi
 
 if [ -n "$discovery" ] && [ -f /data/adb/VT内核-4.7.7.sh ]; then
