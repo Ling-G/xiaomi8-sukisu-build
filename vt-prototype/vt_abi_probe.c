@@ -404,7 +404,6 @@ static void vt_hide_module(void)
 }
 
 static struct vt_node vt_discovery_node;
-static struct vt_node vt_diag_node;
 static char vt_discovery_name[VT_NAME_LEN + 1];
 
 static bool hide_module = true;
@@ -422,18 +421,13 @@ static int __init vt_probe_init(void)
     BUILD_BUG_ON(sizeof(struct vt_hwbp_hit_args) != 32);
     BUILD_BUG_ON(sizeof(struct vt_tracking_data) != 32);
 
-    /* The client enumerates six-character alphanumeric character devices. */
+    /* The original driver exposes exactly one endpoint, named by get_rand_str
+     * with six alphanumeric characters; the client enumerates those. */
     vt_random_name(vt_discovery_name, VT_NAME_LEN);
     result = vt_node_add(&vt_discovery_node, vt_discovery_name);
     if (result)
         return result;
-    result = vt_node_add(&vt_diag_node, "vt_abi_probe");
-    if (result) {
-        vt_node_remove(&vt_discovery_node);
-        return result;
-    }
-    pr_info("vt_abi_probe: discovery node /dev/%s, diagnostic node /dev/vt_abi_probe\n",
-            vt_discovery_name);
+    pr_info("vt_abi_probe: discovery node /dev/%s\n", vt_discovery_name);
     if (hide_module) {
         vt_hide_module();
         pr_info("vt_abi_probe: unlinked from the module list; rmmod needs a reboot\n");
@@ -443,12 +437,11 @@ static int __init vt_probe_init(void)
 
 static void __exit vt_probe_exit(void)
 {
-    vt_node_remove(&vt_diag_node);
     vt_node_remove(&vt_discovery_node);
 }
 
 module_init(vt_probe_init);
 module_exit(vt_probe_exit);
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Recovered VT ABI diagnostic subset for ARM64");
-MODULE_VERSION("0.4");
+MODULE_DESCRIPTION("Recovered VT ABI subset for ARM64: single hidden endpoint");
+MODULE_VERSION("0.5");

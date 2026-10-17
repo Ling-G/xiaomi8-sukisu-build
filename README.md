@@ -37,7 +37,29 @@ Actions 产物保留 **14 天**。其中的 `Module.symvers` 是本模块所需�
 
 以上提交与校验值对应已验证的 v0.3。
 
-v0.4 的构建来自 [Actions 构建 #10](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/39041250572)，源码提交为 [`4828a68`](https://github.com/Ling-G/xiaomi8-sukisu-build/commit/4828a68cde5192abe32df8e4928938b5e554d7b3)。该轮 job 全部步骤成功，构建内的校验因此断言为真：`vermagic` 仍为 `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64`、ELF 为 AArch64、**每一条 `__versions` 记录都按名与 CRC 命中给定符号表**、`module_layout` 为 `0x2ee5b3bb`、且不存在未版本化的导入符号。`vt_abi_probe.ko` 的 SHA256 待真机验证完成后补入，在此之前不要沿用 v0.3 的校验值。
+v0.4 的构建来自 [Actions 构建 #10](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/39041250572)，源码提交为 [`4828a68`](https://github.com/Ling-G/xiaomi8-sukisu-build/commit/4828a68cde5192abe32df8e4928938b5e554d7b3)。该轮 job 全部步骤成功，构建内的校验断言因此为真：`vermagic` 仍为 `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64`、ELF 为 AArch64、**每一条 `__versions` 记录都按名与 CRC 命中给定符号表**、`module_layout` 为 `0x2ee5b3bb`、且不存在未版本化的导入符号。
+
+v0.4 已在真机上完成两轮验证（2026-10-17，同一台 dipper）：
+
+| 检查 | `hide_module=0`（第一轮） | `hide_module=1`（第二轮） |
+| --- | --- | --- |
+| 模块出现在 `/proc/modules` | 是 | **否** |
+| 模块出现在 `/sys/module` | 是 | **否** |
+| `/dev/vt_abi_probe` 正常 | 是 | 是 |
+| 原生自测 | PASS | PASS |
+| 节点在 open 期间消失 | 是 | 是 |
+| 节点在 close 后恢复 | 是 | 是 |
+| 原版 VT 识别（未修改脚本） | 是 | **是** |
+| VT 打开发现节点后该节点消失 | 是 | 是 |
+| `rmmod` | 成功 | **失败（`ENOENT`，设计如此）** |
+
+结果为：**构建产物校验通过，且隐藏行为在真机上按原驱动方式生效**。硬件断点、tracking 与完整 PTE 接口仍未实现，识别成功不代表这些功能可用。
+
+v0.4 的 `vt_abi_probe.ko` SHA256（267,376 字节）：
+
+```text
+28bd95b8c51b4e7fce41e00ace09a9a84087af5b6f875081fd349a1b2290f54e
+```
 
 已验证 v0.3 的 `vt_abi_probe.ko` SHA256：
 

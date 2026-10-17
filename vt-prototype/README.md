@@ -28,14 +28,15 @@
 
 ## 原型范围
 
-`vt_abi_probe.c` 按原驱动的机制创建字符设备：`alloc_chrdev_region` + `cdev_add` + `__class_create` + `device_create`，共两个端点。该内核未启用 `CONFIG_DEVTMPFS`，`/dev` 节点由 Android ueventd 依据 uevent 创建，默认规则为字符设备 `root:root 0600`；这一点需在真机上用 `ls -l` 复核。
+`vt_abi_probe.c` 按原驱动的机制创建字符设备：`alloc_chrdev_region` + `cdev_add` + `__class_create` + `device_create`，**与原驱动一致，只有 1 个端点**。该内核未启用 `CONFIG_DEVTMPFS`，`/dev` 节点由 Android ueventd 依据 uevent 创建，默认规则为字符设备 `root:root 0600`。
 
-- 6 位随机字母数字名端点：名称在 `init_module` 中用 `get_random_bytes` 按原驱动的字符表和取模方式生成，供原程序枚举识别。
-- `/dev/vt_abi_probe`：固定名称的诊断与自测端点。
+- 端点名称：6 位随机字母数字，在 `init_module` 中用 `get_random_bytes` 按原驱动的字符表（62 字符）和取模方式生成，供原程序枚举识别。
 
-两个端点共用同一处理函数。任一端点被打开时，其 class 与设备节点被销毁；最后一个描述符关闭后，按原 `dev_t` 与同一名称重新创建。这与原 `dispatch_open`/`dispatch_close` 的行为一致。
+端点被打开时，其 class 与设备节点被销毁；最后一个描述符关闭后，按原 `dev_t` 与同一名称重新创建。这与原 `dispatch_open`/`dispatch_close` 的行为一致。
 
-模块隐藏：`init_module` 末尾执行 `list_del_init(&THIS_MODULE->list)` 与 `kobject_del(&THIS_MODULE->mkobj.kobj)`，之后 `/proc/modules`、`lsmod`、`/sys/module/vt_abi_probe` 均不再出现该模块，kallsyms 的模块遍历也不再列出其符号。该操作不可逆，`rmmod` 会返回 `ENOENT`，需要重启才能卸载；测试迭代时用 `insmod vt_abi_probe.ko hide_module=0` 保持可卸载。隐藏后不能用 `lsmod` 判断是否已加载，改为检查 `/dev/vt_abi_probe`；重复 `insmod` 会在创建固定名诊断端点时撞上 `/sys/class/vt_abi_probe`，由内核以 `EEXIST` 拒绝。
+v0.5 起移除了早期的固定名 `/dev/vt_abi_probe` 诊断端点：原驱动只有一个随机名节点，保留固定名端点属于与原始行为不符的额外可见面。自测客户端与设备脚本因此改为自行枚举 6 位字母数字节点。
+
+模块隐藏：`init_module` 末尾执行 `list_del_init(&THIS_MODULE->list)` 与 `kobject_del(&THIS_MODULE->mkobj.kobj)`，之后 `/proc/modules`、`lsmod`、`/sys/module`、`/proc/kallsyms` 均不再出现该模块。该操作不可逆，`rmmod` 会返回 `ENOENT`，需要重启才能卸载；测试迭代时用 `insmod vt_abi_probe.ko hide_module=0` 保持可卸载。隐藏后不能用 `lsmod` 判断是否已加载，改为检查 `/dev` 下是否存在 6 位字母数字节点。
 
 单次内存操作上限 64 KiB，每次调用检查 `CAP_SYS_RAWIO`。自身进程使用标准用户地址拷贝；其他进程通过 `/proc/<pid>/mem` 访问，打开文件时继续使用调用者凭据，接受 procfs 原有的 ptrace/LSM 检查。模块查询读取 `/proc/<pid>/maps`，返回第一个匹配文件名或完整路径的映射起始地址，未找到时基址为 0。
 

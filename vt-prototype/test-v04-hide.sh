@@ -5,23 +5,14 @@
 #   sh test-v04-hide.sh 0      insmod with hide_module=0 (removable, for iteration)
 #
 # Run from a root shell with the module *not* loaded. It loads the module,
-# checks the /proc/modules, /sys/module and /dev results, runs the self test,
-# holds the diagnostic node open, then starts the unmodified VT script to check
-# that the 6-character discovery node is found, hidden while VT holds it, and
-# restored after VT is stopped. Expected values are printed at the end.
+# finds the single six-character discovery endpoint it creates, checks
+# /proc/modules and /sys/module, runs the self test, holds the node open to
+# observe it disappear and come back, then starts the unmodified VT script.
+# Expected values are printed at the end.
 # With hide_module=1 the module cannot be removed again: reboot to change builds.
 mod=/data/local/tmp/vt_abi_probe_v04.ko
 scratch=/data/local/tmp
-node=/dev/vt_abi_probe
 hide=${1:-}
-
-# A hidden module never appears in /proc/modules, so the node and the sysfs
-# class are the reliable "already loaded" signals. A second insmod is also
-# refused by the kernel with EEXIST, because the diagnostic class name is fixed.
-if [ -e /dev/vt_abi_probe ] || [ -e /sys/class/vt_abi_probe ] || grep -q '^vt_abi_probe ' /proc/modules; then
-    echo "A probe instance is already active; reboot (hide_module=1) or rmmod (hide_module=0) first"
-    exit 2
-fi
 
 six_char_devices() {
     for path in /dev/*; do
@@ -32,6 +23,22 @@ six_char_devices() {
         [ "${#name}" -eq 6 ] && echo "$name"
     done
 }
+
+# The driver publishes exactly one endpoint with a random six-character name,
+# so "already loaded" is detected by any six-character node whose class exists,
+# not by a fixed name. A hidden module never appears in /proc/modules.
+already_loaded() {
+    grep -q '^vt_abi_probe ' /proc/modules && return 0
+    for name in $(six_char_devices); do
+        [ -e "/sys/class/$name" ] && return 0
+    done
+    return 1
+}
+
+if already_loaded; then
+    echo "A probe instance is already active; reboot (hide_module=1) or rmmod (hide_module=0) first"
+    exit 2
+fi
 
 # /dev is maintained by ueventd, which reacts to the kernel uevent asynchronously,
 # so "does the node exist yet" has to be polled instead of checked once.
@@ -84,6 +91,9 @@ echo DISCOVERY_NODE=${discovery:-none}
 [ -n "$discovery" ] || echo "WARNING: no new six-character node appeared within 12s; check dmesg and ueventd"
 echo KERNEL_LOG=$(dmesg | grep 'vt_abi_probe' | tail -n 2 | tr '\n' '|')
 
+# From here on the single endpoint is the discovery node itself.
+node=/dev/${discovery:-none}
+
 if grep -q '^vt_abi_probe ' /proc/modules; then
     echo MODULE_IN_PROC_MODULES=1
 else
@@ -94,10 +104,10 @@ if [ -e /sys/module/vt_abi_probe ]; then
 else
     echo MODULE_IN_SYSFS=0
 fi
-if node_present_within present; then
-    echo DIAG_NODE_PRESENT=1
+if [ -n "$discovery" ] && node_present_within present; then
+    echo NODE_PRESENT=1
 else
-    echo DIAG_NODE_PRESENT=0
+    echo NODE_PRESENT=0
 fi
 
 chmod 700 "$scratch/vt_probe_test" "$scratch/vt_hold_test"
@@ -173,7 +183,7 @@ cat <<'EXPECTED'
 Expected with the default hide_module=1 (sh test-v04-hide.sh):
   LOAD_STATUS=0
   NEW_DEVICE_ENTRIES=<one six-character name>, DISCOVERY_NODE=<same name>
-  MODULE_IN_PROC_MODULES=0, MODULE_IN_SYSFS=0, DIAG_NODE_PRESENT=1
+  MODULE_IN_PROC_MODULES=0, MODULE_IN_SYSFS=0, NODE_PRESENT=1
   SELFTEST_STATUS=0, NODE_AFTER_SELFTEST=1
   NODE_HIDDEN_WHILE_OPEN=1, HOLD_STATUS=0, NODE_RESTORED_AFTER_CLOSE=1
   ORIGINAL_VT_RECOGNIZED=1

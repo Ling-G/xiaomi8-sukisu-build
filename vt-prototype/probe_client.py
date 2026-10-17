@@ -1,11 +1,24 @@
 """Run only on a Linux/Android Python host after a separately verified build.
 
-Tests the explicit /dev/vt_abi_probe endpoint, not the original VT executable.
+Tests the driver's single six-character endpoint, not the original VT executable.
+The name is random per load, so it is discovered by scanning /dev.
 """
 import ctypes as c
 import errno
 import fcntl
 import os
+import re
+
+def find_endpoint():
+    for name in os.listdir('/dev'):
+        if re.fullmatch(r'[0-9A-Za-z]{6}', name):
+            path = os.path.join('/dev', name)
+            try:
+                fd = os.open(path, os.O_RDWR | os.O_CLOEXEC)
+            except OSError:
+                continue
+            return path, fd
+    raise AssertionError('no six-character endpoint could be opened under /dev')
 
 class Request(c.Structure):
     _fields_ = [('pid', c.c_int32), ('reserved', c.c_uint32),
@@ -26,7 +39,7 @@ def main():
     source = c.create_string_buffer(b'VT ABI probe')
     dest = c.create_string_buffer(c.sizeof(source))
     request = Request(os.getpid(), 0, c.addressof(source), c.addressof(dest), c.sizeof(source))
-    fd = os.open('/dev/vt_abi_probe', os.O_RDWR | os.O_CLOEXEC)
+    path, fd = find_endpoint()
     try:
         assert invoke(fd, 0x02813449, request) == 0
         assert dest.raw == source.raw

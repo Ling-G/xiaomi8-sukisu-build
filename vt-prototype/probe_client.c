@@ -132,6 +132,68 @@ static long request(long fd, unsigned int cmd, struct vt_copy_memory *r)
     return syscall4(29, fd, cmd, (long)r, 0);
 }
 
+/* The driver exposes one endpoint whose name is six alphanumeric characters,
+ * chosen at load time, so the test client has to find it the same way the
+ * original VT client does: enumerate /dev and open the matching entries. */
+struct vt_linux_dirent64 {
+    unsigned long long d_ino;
+    long long d_off;
+    unsigned short d_reclen;
+    unsigned char d_type;
+    char d_name[];
+};
+
+static int six_alnum(const char *name)
+{
+    int i;
+    for (i = 0; i < 6; ++i) {
+        char c = name[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') ||
+              (c >= 'a' && c <= 'z')))
+            return 0;
+    }
+    return name[6] == 0;
+}
+
+static long open_discovery_node(void)
+{
+    char buffer[2048];
+    char path[16];
+    long fd, count;
+    int dirfd, i;
+
+    dirfd = (int)syscall4(56, -100, (long)"/dev", 0x10000 /* O_DIRECTORY */, 0);
+    if (dirfd < 0)
+        return -1;
+    while ((count = syscall4(61 /* getdents64 */, dirfd, (long)buffer,
+                             sizeof(buffer), 0)) > 0) {
+        for (i = 0; i < count;) {
+            struct vt_linux_dirent64 *entry = (void *)(buffer + i);
+            if (entry->d_reclen == 0)
+                break;
+            if (six_alnum(entry->d_name)) {
+                int k;
+                path[0] = '/';
+                path[1] = 'd';
+                path[2] = 'e';
+                path[3] = 'v';
+                path[4] = '/';
+                for (k = 0; k < 6; ++k)
+                    path[5 + k] = entry->d_name[k];
+                path[11] = 0;
+                fd = syscall4(56, -100, (long)path, 2 | 02000000, 0);
+                if (fd >= 0) {
+                    syscall4(57, dirfd, 0, 0, 0);
+                    return fd;
+                }
+            }
+            i += entry->d_reclen;
+        }
+    }
+    syscall4(57, dirfd, 0, 0, 0);
+    return -1;
+}
+
 static volatile char remote_data[4] = {'q', 'r', 's', 0};
 
 static int lookup(long fd, long pid)
@@ -215,7 +277,7 @@ static int run(void)
     char replacement[4] = {'x', 'y', 'z', 0};
     struct vt_copy_memory r;
     long pid = syscall4(172, 0, 0, 0, 0);
-    long fd = syscall4(56, -100, (long)"/dev/vt_abi_probe", 2 | 02000000, 0);
+    long fd = open_discovery_node();
     int result = 0;
     if (fd < 0)
         return 10;
