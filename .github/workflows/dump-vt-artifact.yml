@@ -1,5 +1,8 @@
 name: dump
-on: {workflow_dispatch: {}}
+on:
+  push:
+    branches: [vt-abi-probe-4.9]
+    paths: ['.github/workflows/dump-vt-artifact.yml']
 permissions: {contents: write}
 jobs:
   d:
