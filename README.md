@@ -1,6 +1,6 @@
 # 小米 8 VT 外部驱动（4.9.186）
 
-本分支 `vt-abi-probe-4.9` 开发独立加载的 **`vt_abi_probe.ko`**。**v0.3 已通过真机加载、自测和原版 VT 4.7.7 识别测试**，无需重新封装或刷入 boot 镜像。**v0.4 增加了原驱动中的模块隐藏与设备隐藏逻辑，源码和离线校验已完成，尚待 Actions 构建与真机验证。**
+本分支 `vt-abi-probe-4.9` 开发独立加载的 **`vt_abi_probe.ko`**。**v0.3 已通过真机加载、自测和原版 VT 4.7.7 识别测试**，无需重新封装或刷入 boot 镜像。**v0.4 增加了原驱动中的模块隐藏与设备隐藏逻辑，已通过 Actions 构建与全部离线 ABI 校验，尚待真机验证。**
 
 **这仍是部分实现：硬件断点、tracking 和完整 PTE 接口尚未完成。识别成功不代表 VT 的全部功能可用。**
 
@@ -13,7 +13,7 @@
 | 设备 | 小米 8 / dipper，AArch64 |
 | 系统 | MIUI V12.5.2.0.QEACNXM / Android 10 |
 | 当前内核 | `4.9.186-perf-g10af704` |
-| 模块版本 | `0.3`（已验证）、`0.4`（隐藏逻辑，待构建与真机验证） |
+| 模块版本 | `0.3`（已验证）、`0.4`（隐藏逻辑，构建与离线 ABI 校验通过，待真机验证） |
 | 主程序 | 原版 VT 4.7.7 |
 | 模块 vermagic | `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64` |
 
@@ -35,7 +35,9 @@
 
 Actions 产物保留 **14 天**。其中的 `Module.symvers` 是本模块所需符号的子集，不能替代完整内核符号表。开发用的 `vt_discovery_trace.so` 无需安装，正常启动不依赖它。
 
-以上提交与校验值对应已验证的 v0.3。v0.4 的提交号、Actions 运行号和 `vt_abi_probe.ko` SHA256 需在该轮构建和真机验证完成后填入，在此之前不要沿用 v0.3 的校验值。
+以上提交与校验值对应已验证的 v0.3。
+
+v0.4 的构建来自 [Actions 构建 #10](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/39041250572)，源码提交为 [`4828a68`](https://github.com/Ling-G/xiaomi8-sukisu-build/commit/4828a68cde5192abe32df8e4928938b5e554d7b3)。该轮 job 全部步骤成功，构建内的校验因此断言为真：`vermagic` 仍为 `4.9.186-perf-g10af704 SMP preempt mod_unload modversions aarch64`、ELF 为 AArch64、**每一条 `__versions` 记录都按名与 CRC 命中给定符号表**、`module_layout` 为 `0x2ee5b3bb`、且不存在未版本化的导入符号。`vt_abi_probe.ko` 的 SHA256 待真机验证完成后补入，在此之前不要沿用 v0.3 的校验值。
 
 已验证 v0.3 的 `vt_abi_probe.ko` SHA256：
 
