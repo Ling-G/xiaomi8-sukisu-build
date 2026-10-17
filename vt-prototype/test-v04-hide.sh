@@ -65,13 +65,23 @@ if [ "$load_status" -ne 0 ]; then
     echo "insmod failed; EEXIST usually means an earlier instance is still active"
     exit "$load_status"
 fi
-sleep 2
-
-six_char_devices > "$scratch/vt-v04-after.txt"
-comm -13 "$scratch/vt-v04-before.txt" "$scratch/vt-v04-after.txt" > "$scratch/vt-v04-new.txt"
-discovery=$(head -n 1 "$scratch/vt-v04-new.txt")
+# The new six-character node appears only after ueventd reacts to the module's
+# device_create, so poll for it instead of assuming two seconds is enough:
+# /dev already holds about twenty six-character names, so the only reliable
+# signal is the diff against the list taken before insmod.
+discovery=
+tries=0
+while [ "$tries" -lt 12 ]; do
+    six_char_devices > "$scratch/vt-v04-after.txt"
+    comm -13 "$scratch/vt-v04-before.txt" "$scratch/vt-v04-after.txt" > "$scratch/vt-v04-new.txt"
+    discovery=$(head -n 1 "$scratch/vt-v04-new.txt")
+    [ -n "$discovery" ] && break
+    sleep 1
+    tries=$((tries + 1))
+done
 echo NEW_DEVICE_ENTRIES=$(tr '\n' ' ' < "$scratch/vt-v04-new.txt")
 echo DISCOVERY_NODE=${discovery:-none}
+[ -n "$discovery" ] || echo "WARNING: no new six-character node appeared within 12s; check dmesg and ueventd"
 echo KERNEL_LOG=$(dmesg | grep 'vt_abi_probe' | tail -n 2 | tr '\n' '|')
 
 if grep -q '^vt_abi_probe ' /proc/modules; then
