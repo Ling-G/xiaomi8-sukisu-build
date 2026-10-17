@@ -35,7 +35,7 @@
 
 两个端点共用同一处理函数。任一端点被打开时，其 class 与设备节点被销毁；最后一个描述符关闭后，按原 `dev_t` 与同一名称重新创建。这与原 `dispatch_open`/`dispatch_close` 的行为一致。
 
-模块隐藏：`init_module` 末尾执行 `list_del_init(&THIS_MODULE->list)` 与 `kobject_del(&THIS_MODULE->mkobj.kobj)`，之后 `/proc/modules`、`lsmod`、`/sys/module/vt_abi_probe` 均不再出现该模块，kallsyms 的模块遍历也不再列出其符号。该操作不可逆，`rmmod` 会返回 `ENOENT`，需要重启才能卸载；测试迭代时用 `insmod vt_abi_probe.ko hide_module=0` 保持可卸载。
+模块隐藏：`init_module` 末尾执行 `list_del_init(&THIS_MODULE->list)` 与 `kobject_del(&THIS_MODULE->mkobj.kobj)`，之后 `/proc/modules`、`lsmod`、`/sys/module/vt_abi_probe` 均不再出现该模块，kallsyms 的模块遍历也不再列出其符号。该操作不可逆，`rmmod` 会返回 `ENOENT`，需要重启才能卸载；测试迭代时用 `insmod vt_abi_probe.ko hide_module=0` 保持可卸载。隐藏后不能用 `lsmod` 判断是否已加载，改为检查 `/dev/vt_abi_probe`；重复 `insmod` 会在创建固定名诊断端点时撞上 `/sys/class/vt_abi_probe`，由内核以 `EEXIST` 拒绝。
 
 单次内存操作上限 64 KiB，每次调用检查 `CAP_SYS_RAWIO`。自身进程使用标准用户地址拷贝；其他进程通过 `/proc/<pid>/mem` 访问，打开文件时继续使用调用者凭据，接受 procfs 原有的 ptrace/LSM 检查。模块查询读取 `/proc/<pid>/maps`，返回第一个匹配文件名或完整路径的映射起始地址，未找到时基址为 0。
 

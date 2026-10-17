@@ -162,6 +162,7 @@ echo $?
 - 每次加载生成不同的 6 位字母数字节点名，原程序仍按 6 位字母数字规则枚举到它。
 - 节点被打开后不再出现在 `/dev`，VT 依靠已持有的描述符继续工作；最后一个描述符关闭后节点恢复。
 - 模块不再出现在 `/proc/modules`、`lsmod`、`/sys/module`，kallsyms 的模块遍历也不再列出其符号。该步骤不可逆，`rmmod` 会失败，需要重启；测试迭代时用 `insmod ... hide_module=0`。
+- 隐藏后不能再用 `lsmod` 判断是否已加载：请检查 `/dev/vt_abi_probe` 是否存在。重复 `insmod` 会在创建固定名诊断端点时撞上 `/sys/class/vt_abi_probe`，由内核以 `EEXIST` 拒绝（`insmod` 报 `File exists`），因此不会静默叠出多个实例。
 
 只复刻了上述机制。原驱动中没有发现 `/proc` 过滤、系统调用挂钩或进程隐藏代码，本实现也没有添加。`list_del_init` 在原驱动中同样未持有 `module_mutex`，本实现与其一致，风险相同。
 
