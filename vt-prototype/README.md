@@ -58,4 +58,28 @@ make KDIR=/absolute/path/to/matching/kernel-out \
 
 `probe_client.py` 是可选的 Python 自测，覆盖自身内存读写、无效 PID、长度上限和错误命令。原生 AArch64 客户端 `probe_client.c` 还会创建专用子进程，核对跨进程读取、写入后的父子内存隔离、子进程对写入结果的确认，以及自身/子进程的模块基址查询。`vt_hold_test.c` 编译出的 `vt_hold_test` 只负责打开诊断端点并保持 5 秒，用于从 shell 观察节点在打开期间消失、关闭后恢复。三个程序都不自行安装模块。
 
-后续需要：由 Actions 编译 v0.4，核对模块 SHA256、全部导入 CRC 与 vermagic，再在真机上按 `hide_module` 两种取值分别验证；之后才是硬件断点与 tracking 的独立实现。源码始终作为外部模块编译，不修改 main，不生成刷机镜像，不设置开机加载。
+## 内核 API 依赖
+
+v0.4 新增的每个内核接口都按固定提交 `dcfb1676925aec83b06ae04fd8ca989ced75067c` 的 4.9 源码头文件逐个核对过（从本地 `xiaomi-kernel.tar.gz` 解出对应文件），不是凭记忆写的：
+
+| 接口 | 该树中的声明 | 头文件与行号 |
+| --- | --- | --- |
+| `__class_create` | `struct class * __must_check __class_create(struct module *owner, const char *name, struct lock_class_key *key)` | `include/linux/device.h` |
+| `class_destroy` | `void class_destroy(struct class *cls)` | 同上 |
+| `device_create` | `struct device *device_create(struct class *cls, struct device *parent, dev_t devt, void *drvdata, const char *fmt, ...)` | 同上 |
+| `device_destroy` | `void device_destroy(struct class *cls, dev_t devt)` | 同上 |
+| `kobject_del` | `void kobject_del(struct kobject *kobj)` | `include/linux/kobject.h` |
+| `cdev_init` / `cdev_add` / `cdev_del` | `void cdev_init(struct cdev *, const struct file_operations *)` / `int cdev_add(struct cdev *, dev_t, unsigned)` / `void cdev_del(struct cdev *)` | `include/linux/cdev.h` |
+| `alloc_chrdev_region` / `unregister_chrdev_region` | `int alloc_chrdev_region(dev_t *, unsigned, unsigned, const char *)` / `void unregister_chrdev_region(dev_t, unsigned)` | `include/linux/fs.h` |
+| `get_random_bytes` | `void get_random_bytes(void *buf, int nbytes)` | `include/linux/random.h` |
+| `struct module` | `enum module_state state`(333)、`struct list_head list`(336)、`struct module_kobject mkobj`(342)；`module_kobject` 首成员即 `struct kobject kobj` | `include/linux/module.h` |
+| `list_del_init` | `static inline void list_del_init()` → `static inline __list_del_entry()`，不产生导入符号 | `include/linux/list.h` 114、156 |
+| `is_compat_task` | `static inline int is_compat_task(void)` | `arch/arm64/include/asm/compat.h` |
+| `module_param` | `module_param` → `module_param_named` → `param_ops_##type`，因此需要导入 `param_ops_bool` | `include/linux/moduleparam.h` |
+
+这与 `expected-crcs.json` 里 49 个符号一一对应。`__list_del_entry` 不在内核导出表中，正因为它在 4.9 是 inline；所以 `list_del_init` 不会引入未导出符号。
+
+## 后续需要
+
+由 Actions 编译 v0.4，核对模块 SHA256、全部导入 CRC 与 vermagic，再在真机上按 `hide_module` 两种取值分别验证；之后才是硬件断点与 tracking 的独立实现。源码始终作为外部模块编译，不修改 main，不生成刷机镜像，不设置开机加载。
+
