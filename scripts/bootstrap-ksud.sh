@@ -55,7 +55,13 @@ manager_check() (
     printf '%s\n' "$lib" > "$backup/last-repaired-path"
     say 'official manager 4.2.1 backend repaired to pinned UAPI 2 binary'
     # Drop cached shells without clearing app data or grants.
-    timeout 10 am force-stop com.sukisu.ultra >> /data/adb/dipper-bootstrap.log 2>&1 || true
+    # Binder forwards stdout/stderr to system_server. A private /data/adb log
+    # descriptor is rejected by SELinux there, so forward only /dev/null.
+    if timeout 10 am force-stop com.sukisu.ultra >/dev/null 2>&1; then
+        say 'manager cached shell stopped; reopen the manager'
+    else
+        say 'manager restart required; close and reopen manually'
+    fi
 )
 manager_watch() (
     set -eu
