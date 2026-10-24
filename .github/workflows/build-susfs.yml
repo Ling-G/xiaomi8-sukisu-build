@@ -2,6 +2,7 @@ name: Build dipper builtin drivers with SUSFS
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/build-susfs.yml'
       - 'scripts/build-susfs.sh'
@@ -14,7 +15,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: dipper-susfs-experimental
+  group: dipper-susfs-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   builtin:
@@ -24,8 +25,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y build-essential bc flex bison libssl-dev libelf-dev libncurses5 libtinfo5 python3 git curl zip
+      - name: Check bootstrap shell syntax
+        run: sh -n scripts/bootstrap-ksud.sh
       - name: Build kernel with builtin audio and WLAN
         run: bash scripts/build-susfs.sh
+      - name: Include the matching ramdisk bootstrap source
+        run: |
+          cp scripts/bootstrap-ksud.sh artifacts/
+          (cd artifacts && sha256sum bootstrap-ksud.sh >> SHA256SUMS)
       - uses: actions/upload-artifact@v4
         if: always()
         with:

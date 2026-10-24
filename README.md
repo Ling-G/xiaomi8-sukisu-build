@@ -1,4 +1,20 @@
-# 小米 8 SukiSU 内核
+# 小米 8 SukiSU 内核：管理器后端兼容实验版
+
+本分支 `experiment/manager-backend-compat` 基于已验证的延后安装版。新增功能仅通过本地隔离测试，**尚未实机验证**。
+
+- 开机完成后启动检查，每 60 秒查询一次管理器安装路径，覆盖开机后才安装管理器的情况。
+- 只处理官方 `SukiSU_v4.2.1_40994-release.apk`（完整 APK SHA256 白名单）及其已知 ARM64 后端；未知版本或未解压原生库时跳过。
+- 将提取目录的 `libksud.so` 原子替换为已校验的官方 4.2.0 UAPI 2 后端，保留原权限和 SELinux 标签；不修改 APK、签名或授权数据。成功替换会强制停止管理器一次，重新打开即可。
+- 原后端备份于 `/data/adb/dipper-manager-compat/original-libksud.so`，日志为 `/data/adb/dipper-bootstrap.log`。
+- 停用：用 Root 创建 `/data/adb/dipper-manager-compat.disable`，等待一分钟或重启；需要恢复原库时，再覆盖安装官方管理器 APK。
+- 这是已知版本适配，不是通用 UAPI 5 支持；4.2.1 新增、4.2.0 不具备的管理命令仍可能不可用。
+
+实验镜像命名为 `boot-dipper-susfs-manager-compat.img`。使用本分支的封装脚本，内核仍沿用已验证的构建 #7，只更新 ramdisk 检查脚本；可继续使用原来的 `Module.symvers`。
+
+本地隔离测试：`python scripts/test-manager-compat.py /path/to/SukiSU_v4.2.0_40900-release.apk /path/to/SukiSU_v4.2.1_40994-release.apk`。测试模拟 Android 命令和 SELinux 标签，不代表实机兼容性验证。官方 APK 来源：[4.2.0](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/tag/v4.2.0)、[4.2.1](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/tag/v4.2.1)。
+
+下面的“已验证版本”描述的是基础版本，不代表上述自动修复已通过实机测试。
+
 
 适用于 **小米 8（dipper）/ MIUI V12.5.2.0.QEACNXM / Android 10 / Linux 4.9.186**，需要已解锁 Bootloader。
 
