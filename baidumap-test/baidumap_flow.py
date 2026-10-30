@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clear Baidu Map, onboard, search 开锁 and open 即时达, ten rounds by default.
+"""Repeat the Heji map flow until five consecutive first-screen misses.
 
 All taps use vt_touch.ko through vt_touch_test. Accessibility is used only
 to read UI and set Unicode text. Each default round clears app data.
@@ -18,6 +18,17 @@ import xml.etree.ElementTree as ET
 
 PACKAGE = 'com.baidu.BaiduMap'
 ROOT = Path(__file__).resolve().parent
+
+
+class MissStreak:
+    """Only confirmed not_found rounds contribute to a consecutive streak."""
+    def __init__(self, limit):
+        self.limit = limit
+        self.count = 0
+
+    def record(self, outcome):
+        self.count = self.count + 1 if outcome == 'not_found' else 0
+        return self.count >= self.limit
 
 
 class Flow:
@@ -241,16 +252,19 @@ class Flow:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='循环清空百度地图、首次启动、搜索开锁并在第一屏打开即时达。默认10轮，每轮删除全部应用数据。')
+    parser = argparse.ArgumentParser(description='无限循环清空百度地图、搜索开锁并在第一屏打开何记开锁；连续5次未找到停止。每轮删除全部应用数据。')
     parser.add_argument('--adb', default='adb')
     parser.add_argument('--serial')
-    parser.add_argument('--target', default='即时达', help='搜索结果店名关键词，默认即时达（可匹配郑州即时达等完整店名）')
-    parser.add_argument('--rounds', type=int, default=10, help='完整循环次数，默认10')
+    parser.add_argument('--target', default='何记开锁', help='搜索结果店名关键词，默认何记开锁')
+    parser.add_argument('--rounds', type=int, default=0, help='最多循环次数，0表示无限循环（默认）')
+    parser.add_argument('--miss-limit', type=int, default=5, help='连续未找到的停止阈值，默认5')
     parser.add_argument('--resume', choices=['none', 'search', 'results'], default='none',
                         help='none=清除数据并全程运行；search/results=从当前页面继续，不清除数据')
     args = parser.parse_args()
-    if not 1 <= args.rounds <= 100:
-        parser.error('--rounds must be between 1 and 100')
+    if not 0 <= args.rounds <= 1000000:
+        parser.error('--rounds must be 0 (unlimited) or a positive integer up to 1000000')
+    if not 1 <= args.miss_limit <= 1000000:
+        parser.error('--miss-limit must be positive')
     if args.resume != 'none' and args.rounds != 1:
         parser.error('Resume mode requires --rounds 1; loops must clear data each round')
     if not args.target.strip():
@@ -258,9 +272,13 @@ def main():
     args.batch_dir = ROOT / 'runs' / ('batch-'+time.strftime('%Y%m%d-%H%M%S')+'-'+str(time.time_ns()%1000000))
     args.batch_dir.mkdir(parents=True, exist_ok=False)
     results = []
-    for index in range(1, args.rounds+1):
+    streak = MissStreak(args.miss_limit)
+    index = 0
+    while args.rounds == 0 or index < args.rounds:
+        index += 1
         args.round_number = index
-        print(f'\n===== 第 {index}/{args.rounds} 轮：目标 {args.target} =====', flush=True)
+        total = str(args.rounds) if args.rounds else '无限'
+        print(f'\n===== 第 {index}/{total} 轮：目标 {args.target} =====', flush=True)
         flow = Flow(args)
         started = time.monotonic()
         try:
@@ -272,18 +290,30 @@ def main():
             flow.log('失败：'+str(e), outcome='failed')
             try: flow.screenshot('failure.png')
             except Exception: pass
+        reached_miss_limit = streak.record(flow.outcome)
+        stop_reason = ('consecutive_not_found' if reached_miss_limit else
+                       'user_interrupted' if flow.outcome == 'interrupted' else
+                       'round_limit' if args.rounds and index >= args.rounds else None)
         results.append({'round': index, 'outcome': flow.outcome,
+                        'consecutive_not_found': streak.count,
                         'seconds': round(time.monotonic()-started, 2), 'log_directory': flow.out.name})
         counts = {key: sum(r['outcome'] == key for r in results)
                   for key in ['opened','not_found','failed','interrupted']}
         summary = {'target': args.target, 'query': '开锁', 'scope': 'first_screen_only',
-                   'requested_rounds': args.rounds, 'completed_rounds': len(results),
-                   'counts': counts, 'rounds': results}
+                   'mode': 'unlimited' if args.rounds == 0 else 'limited',
+                   'requested_rounds': args.rounds or None, 'completed_rounds': len(results),
+                   'miss_limit': args.miss_limit, 'consecutive_not_found': streak.count,
+                   'stop_reason': stop_reason, 'counts': counts, 'rounds': results}
         (args.batch_dir/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
-        text = f"已执行 {len(results)}/{args.rounds} 轮：找到 {counts['opened']}，未找到 {counts['not_found']}，失败 {counts['failed']}，中止 {counts['interrupted']}"
+        text = (f"已执行 {len(results)}/{total} 轮：找到 {counts['opened']}，未找到 {counts['not_found']}，"
+                f"失败 {counts['failed']}，中止 {counts['interrupted']}；连续未找到 {streak.count}/{args.miss_limit}")
+        if stop_reason:
+            text += '\n停止原因：'+stop_reason
         (args.batch_dir/'summary.txt').write_text(text+'\n',encoding='utf-8')
         print(text, flush=True)
-        if flow.outcome == 'interrupted':
+        if reached_miss_limit:
+            print(f'LOG 连续{args.miss_limit}次未找到，停止运行', flush=True)
+        if stop_reason:
             break
     print('日志：'+str(args.batch_dir), flush=True)
     return 1 if counts['failed'] or counts['interrupted'] else 0

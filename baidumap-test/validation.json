@@ -1,84 +1,39 @@
 {
-  "date": "2026-10-30",
+  "snapshot_time": "2026-10-30 14:46:22",
+  "status": "running_snapshot",
+  "target_keyword": "何记开锁",
+  "query": "开锁",
+  "scope": "first_screen_only",
+  "mode": "unlimited",
+  "round_limit": null,
+  "miss_limit": 5,
+  "reset_streak_on": [
+    "opened",
+    "failed",
+    "interrupted"
+  ],
+  "logic_tests": {
+    "fifth_miss_stops": "passed",
+    "found_resets_streak": "passed",
+    "errors_are_not_misses": "passed"
+  },
   "device": "Xiaomi MI 8 / dipper",
   "kernel": "4.9.186-perf-g10af704",
   "baidu_map_version": "22.1.0 (1660)",
   "driver_version": "0.2",
-  "query": "开锁",
-  "target_keyword": "即时达",
-  "scope": "first_screen_only",
-  "every_round_clears_all_app_data": true,
-  "requested_rounds": 10,
-  "completed_rounds": 10,
-  "counts": {
-    "opened": 10,
+  "completed_rounds_at_snapshot": 3,
+  "counts_at_snapshot": {
+    "opened": 3,
     "not_found": 0,
     "failed": 0,
     "interrupted": 0
   },
-  "rounds": [
-    {
-      "round": 1,
-      "outcome": "opened",
-      "seconds": 41.83,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 2,
-      "outcome": "opened",
-      "seconds": 41.7,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 3,
-      "outcome": "opened",
-      "seconds": 41.98,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 4,
-      "outcome": "opened",
-      "seconds": 44.31,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 5,
-      "outcome": "opened",
-      "seconds": 42.84,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 6,
-      "outcome": "opened",
-      "seconds": 42.41,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 7,
-      "outcome": "opened",
-      "seconds": 42.39,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 8,
-      "outcome": "opened",
-      "seconds": 42.76,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 9,
-      "outcome": "opened",
-      "seconds": 42.49,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    },
-    {
-      "round": 10,
-      "outcome": "opened",
-      "seconds": 42.8,
-      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
-    }
+  "consecutive_not_found_at_snapshot": 0,
+  "stop_reason_at_snapshot": null,
+  "observed_titles": [
+    "何记开锁换锁管道疏通"
   ],
-  "evidence_audit": "Verified per-round stage logs, first-screen screenshots and target detail XML/screenshots",
-  "local_evidence": "runs/batch-20261030-141537-968000",
-  "no_scrolling_or_pagination": true
+  "note": "This is a live-run snapshot, not a completed unlimited test. Five misses tested in unit tests; not forced on the live phone.",
+  "local_live_summary": "runs/batch-20261030-144351-35200/summary.json",
+  "previous_test_record": "validation-jishida-10-rounds.json"
 }

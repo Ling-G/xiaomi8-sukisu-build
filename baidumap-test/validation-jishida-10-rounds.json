@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-30",
+  "device": "Xiaomi MI 8 / dipper",
+  "kernel": "4.9.186-perf-g10af704",
+  "baidu_map_version": "22.1.0 (1660)",
+  "driver_version": "0.2",
+  "query": "开锁",
+  "target_keyword": "即时达",
+  "scope": "first_screen_only",
+  "every_round_clears_all_app_data": true,
+  "requested_rounds": 10,
+  "completed_rounds": 10,
+  "counts": {
+    "opened": 10,
+    "not_found": 0,
+    "failed": 0,
+    "interrupted": 0
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "outcome": "opened",
+      "seconds": 41.83,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 2,
+      "outcome": "opened",
+      "seconds": 41.7,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 3,
+      "outcome": "opened",
+      "seconds": 41.98,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 4,
+      "outcome": "opened",
+      "seconds": 44.31,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 5,
+      "outcome": "opened",
+      "seconds": 42.84,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 6,
+      "outcome": "opened",
+      "seconds": 42.41,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 7,
+      "outcome": "opened",
+      "seconds": 42.39,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 8,
+      "outcome": "opened",
+      "seconds": 42.76,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 9,
+      "outcome": "opened",
+      "seconds": 42.49,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    },
+    {
+      "round": 10,
+      "outcome": "opened",
+      "seconds": 42.8,
+      "matched_title": "郑州即时达开锁换锁智能锁汽车钥匙"
+    }
+  ],
+  "evidence_audit": "Verified per-round stage logs, first-screen screenshots and target detail XML/screenshots",
+  "local_evidence": "runs/batch-20261030-141537-968000",
+  "no_scrolling_or_pagination": true
+}
