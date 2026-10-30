@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-30",
+  "device": "Xiaomi MI 8 / dipper",
+  "kernel": "4.9.186-perf-g10af704",
+  "native_portrait_size": [1080, 2248],
+  "source_commit": "b981e1e1c52060f27027e4518e941465b3eec352",
+  "actions_run": 41008536431,
+  "module": "vt_touch.ko",
+  "module_version": "0.1",
+  "module_sha256": "b0856ba939e76d7aa5f7df3308184aa842c122dca3ea8e0dfe0b082b092d56d8",
+  "authoritative_symvers_sha256": "a5cac55aa1398925453e75aa82f527d8cdb2386b4242cdb05ab3312b651aad80",
+  "verified_version_records": 24,
+  "static_client": "vt_touch_test",
+  "selftest_passed": true,
+  "tap": {
+    "x": 540,
+    "y": 850,
+    "requested_duration_ms": 80,
+    "observed_press_to_release_ms": 88.439,
+    "evdev_path_this_run": "/dev/input/event6",
+    "events": ["ABS_MT_TRACKING_ID=0", "ABS_MT_POSITION_X=540", "ABS_MT_POSITION_Y=850", "BTN_TOUCH=DOWN", "SYN_REPORT", "ABS_MT_TRACKING_ID=-1", "BTN_TOUCH=UP", "SYN_REPORT"],
+    "completed_counter": [0, 1],
+    "android_result": "Settings main page -> My device; com.android.settings/.SubSettings"
+  },
+  "unload_removed_module_control_node_input_device": true,
+  "reload_and_selftest_passed": true,
+  "final_phone_module_path": "/data/adb/vt_touch.ko",
+  "auto_load_configured": false,
+  "limitations": ["single finger click only", "native portrait coordinates", "other ROMs and rotations unverified", "original VT does not automatically use this extension"]
+}

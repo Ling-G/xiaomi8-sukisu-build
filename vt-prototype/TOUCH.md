@@ -2,7 +2,11 @@
 
 点击部分编译为独立的 **`vt_touch.ko`**，与 `vt_abi_probe.ko` 一起输出。它可以单独加载、卸载，不依赖 VT 主程序或内存接口；固定控制节点 `/dev/vt_touch`、模块及输入设备始终可见。
 
-当前状态：源码已实现，等待 Actions 编译及真机验证；不能将驱动返回成功等同于 Android 已接收点击。
+当前状态：**2026-10-30 已通过 Actions 编译和小米 8 真机测试**。测试程序经驱动点击设置首页 `(540,850)` 后，Android 进入“我的设备”；同时捕获到完整按下/抬起事件。ABI/错误参数自测、正常卸载及重新加载均通过。
+
+已验证构建：[Actions 41008536431](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/41008536431)，源码提交 `b981e1e1c52060f27027e4518e941465b3eec352`。在 Artifacts 下载 `vt-abi-probe-dipper-4.9`，文件位于 `vt-probe-artifacts/`；该产物保留至 2026-11-13。
+
+`vt_touch.ko` SHA256：`b0856ba939e76d7aa5f7df3308184aa842c122dca3ea8e0dfe0b082b092d56d8`。24 条符号版本记录均与完整权威符号表匹配。该测试仅证明本机竖屏下的单次点击，不代表其他 ROM、旋转状态或多指手势已验证。
 
 ## 加载和测试
 
