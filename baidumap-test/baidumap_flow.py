@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Clear Baidu Map, onboard, search 开锁 and open 嘉悦开锁.
+"""Clear Baidu Map, onboard, search 开锁 and open 即时达, ten rounds by default.
 
 All taps use vt_touch.ko through vt_touch_test. Accessibility is used only
-to read UI, set Unicode text and scroll. Default execution clears app data.
+to read UI and set Unicode text. Each default round clears app data.
 """
 from pathlib import Path
 import argparse
@@ -24,10 +24,11 @@ class Flow:
     def __init__(self, args):
         self.args = args
         self.adb = [args.adb] + (['-s', args.serial] if args.serial else [])
-        self.out = ROOT / 'runs' / time.strftime('%Y%m%d-%H%M%S')
+        self.out = args.batch_dir / f'round-{args.round_number:02d}'
         self.out.mkdir(parents=True, exist_ok=False)
         self.events = []
         self.sequence = 0
+        self.outcome = 'failed'
 
     def log(self, message, **extra):
         print(message, flush=True)
@@ -196,7 +197,8 @@ class Flow:
                 raise RuntimeError('搜索结果尚未加载完成，不能判断是否找到')
             time.sleep(0.5)
         matches = [n for n in nodes if self.visible(n) and
-                   self.label(n).replace(' ', '').startswith(self.args.target) and
+                   self.args.target in self.label(n).replace(' ', '') and
+                   len(self.label(n)) <= 80 and
                    not n.get('class', '').endswith('EditText')]
         exact = [n for n in matches if self.label(n).strip() == self.args.target]
         if exact:
@@ -206,6 +208,7 @@ class Flow:
             raise RuntimeError('Multiple matching entries are visible; specify the intended branch/address')
         self.screenshot('first-screen.png')
         if not matches:
+            self.outcome = 'not_found'
             self.log('LOG 没有找到', outcome='not_found', scope='first_screen_only')
             return
         self.tap(matches[0], '点击搜索结果“'+self.args.target+'”')
@@ -219,6 +222,7 @@ class Flow:
         if '检索列表页' in names:
             raise RuntimeError('Still on the result list after clicking the target')
         self.screenshot('success.png')
+        self.outcome = 'opened'
         self.log('完成：已打开'+self.args.target, outcome='opened', scope='first_screen_only')
 
     def run(self):
@@ -237,24 +241,52 @@ class Flow:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='清空百度地图后首次启动，搜索开锁并在第一屏打开嘉悦开锁。默认会删除百度地图全部应用数据。')
+    parser = argparse.ArgumentParser(description='循环清空百度地图、首次启动、搜索开锁并在第一屏打开即时达。默认10轮，每轮删除全部应用数据。')
     parser.add_argument('--adb', default='adb')
     parser.add_argument('--serial')
-    parser.add_argument('--target', default='嘉悦开锁', help='搜索结果店名，默认嘉悦开锁')
+    parser.add_argument('--target', default='即时达', help='搜索结果店名关键词，默认即时达（可匹配郑州即时达等完整店名）')
+    parser.add_argument('--rounds', type=int, default=10, help='完整循环次数，默认10')
     parser.add_argument('--resume', choices=['none', 'search', 'results'], default='none',
                         help='none=清除数据并全程运行；search/results=从当前页面继续，不清除数据')
     args = parser.parse_args()
-    flow = Flow(args)
-    try:
-        flow.run()
-    except Exception as e:
-        flow.log('失败：'+str(e))
-        try: flow.screenshot('failure.png')
-        except Exception: pass
-        print('日志：'+str(flow.out), file=sys.stderr)
-        return 1
-    print('日志：'+str(flow.out))
-    return 0
+    if not 1 <= args.rounds <= 100:
+        parser.error('--rounds must be between 1 and 100')
+    if args.resume != 'none' and args.rounds != 1:
+        parser.error('Resume mode requires --rounds 1; loops must clear data each round')
+    if not args.target.strip():
+        parser.error('--target cannot be empty')
+    args.batch_dir = ROOT / 'runs' / ('batch-'+time.strftime('%Y%m%d-%H%M%S')+'-'+str(time.time_ns()%1000000))
+    args.batch_dir.mkdir(parents=True, exist_ok=False)
+    results = []
+    for index in range(1, args.rounds+1):
+        args.round_number = index
+        print(f'\n===== 第 {index}/{args.rounds} 轮：目标 {args.target} =====', flush=True)
+        flow = Flow(args)
+        started = time.monotonic()
+        try:
+            flow.run()
+        except KeyboardInterrupt:
+            flow.log('用户中止测试', outcome='interrupted')
+            flow.outcome = 'interrupted'
+        except Exception as e:
+            flow.log('失败：'+str(e), outcome='failed')
+            try: flow.screenshot('failure.png')
+            except Exception: pass
+        results.append({'round': index, 'outcome': flow.outcome,
+                        'seconds': round(time.monotonic()-started, 2), 'log_directory': flow.out.name})
+        counts = {key: sum(r['outcome'] == key for r in results)
+                  for key in ['opened','not_found','failed','interrupted']}
+        summary = {'target': args.target, 'query': '开锁', 'scope': 'first_screen_only',
+                   'requested_rounds': args.rounds, 'completed_rounds': len(results),
+                   'counts': counts, 'rounds': results}
+        (args.batch_dir/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
+        text = f"已执行 {len(results)}/{args.rounds} 轮：找到 {counts['opened']}，未找到 {counts['not_found']}，失败 {counts['failed']}，中止 {counts['interrupted']}"
+        (args.batch_dir/'summary.txt').write_text(text+'\n',encoding='utf-8')
+        print(text, flush=True)
+        if flow.outcome == 'interrupted':
+            break
+    print('日志：'+str(args.batch_dir), flush=True)
+    return 1 if counts['failed'] or counts['interrupted'] else 0
 
 
 if __name__ == '__main__':
