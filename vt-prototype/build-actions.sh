@@ -44,7 +44,9 @@ make -C vt-prototype KDIR="$ROOT/out" ARCH=arm64 \
     CROSS_COMPILE="$ROOT/work/gcc64/bin/aarch64-linux-android-" HOSTCFLAGS='-O2 -fcommon'
 mkdir -p vt-probe-artifacts
 cp vt-prototype/vt_abi_probe.ko vt-probe-artifacts/
+cp vt-prototype/vt_touch.ko vt-probe-artifacts/
 python3 vt-prototype/verify_module.py vt-probe-artifacts/vt_abi_probe.ko out/Module.symvers vt-probe-artifacts/module-check.json
+python3 vt-prototype/verify_module.py vt-probe-artifacts/vt_touch.ko out/Module.symvers vt-probe-artifacts/touch-module-check.json
 python3 - "$ROOT" <<'PY'
 from pathlib import Path
 import json,sys
@@ -58,7 +60,17 @@ report['provided_symvers_sha256']=expected['provided_symvers_sha256']
 report['provided_table_import_crcs_match']=True
 report['symvers_scope']='Subset of provided table sufficient for diagnostic module imports; not the complete kernel export table'
 (r/'vt-probe-artifacts/module-check.json').write_text(json.dumps(report,indent=2)+'\n')
+report=json.loads((r/'vt-probe-artifacts/touch-module-check.json').read_text())
+for name,crc in report['checked_symbol_crcs'].items():
+    assert name in expected['symbols'], ('missing touch import CRC',name)
+    assert int(crc,16)==int(expected['symbols'][name],16), ('touch CRC mismatch',name)
+report['provided_symvers_sha256']=expected['provided_symvers_sha256']
+report['provided_table_import_crcs_match']=True
+report['scope']='Visible touchscreen companion; native portrait single click; no hardware validation in CI'
+(r/'vt-probe-artifacts/touch-module-check.json').write_text(json.dumps(report,indent=2)+'\n')
 PY
+"$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -Wall -Wextra -Werror -ffreestanding -fno-builtin -fno-stack-protector \
+    -nostdlib -static -Wl,--build-id=none -Wl,-e,_start vt-prototype/vt_touch_test.c -o vt-probe-artifacts/vt_touch_test
 "$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -ffreestanding -fno-builtin -fno-stack-protector \
     -nostdlib -static -Wl,--build-id=none -Wl,-e,_start vt-prototype/probe_client.c -o vt-probe-artifacts/vt_probe_test
 "$ROOT/work/gcc64/bin/aarch64-linux-android-gcc" -Os -ffreestanding -fno-builtin -fno-stack-protector \
@@ -68,6 +80,7 @@ PY
 cp artifacts/kernel.config artifacts/kernelrelease.txt vt-probe-artifacts/
 cp out/Module.symvers vt-probe-artifacts/Module.symvers
 cp vt-prototype/README.md vt-probe-artifacts/README-source-status.md
+cp vt-prototype/TOUCH.md vt-prototype/vt_touch_protocol.h vt-probe-artifacts/
 cp vt-prototype/test-v04-hide.sh vt-probe-artifacts/test-v04-hide.sh
 git rev-parse HEAD > vt-probe-artifacts/source-commit.txt
-(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_probe_test vt_hold_test vt_discovery_trace.so Module.symvers kernel.config module-check.json test-v04-hide.sh > SHA256SUMS)
+(cd vt-probe-artifacts && sha256sum vt_abi_probe.ko vt_touch.ko vt_touch_test vt_touch_protocol.h TOUCH.md touch-module-check.json vt_probe_test vt_hold_test vt_discovery_trace.so Module.symvers kernel.config module-check.json test-v04-hide.sh > SHA256SUMS)

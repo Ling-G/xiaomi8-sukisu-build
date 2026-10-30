@@ -49,7 +49,19 @@
     "cdev_del": "0x14dffcda",
     "misc_deregister": "0x0cf482ac",
     "unregister_chrdev_region": "0x7485e15e",
-    "kfree": "0x037a0cba"
+    "kfree": "0x037a0cba",
+    "input_allocate_device": "0xab81bdc4",
+    "input_free_device": "0x5d863c65",
+    "input_register_device": "0x2e4c4b35",
+    "input_unregister_device": "0x6d9f6d7d",
+    "input_set_abs_params": "0xf631dba0",
+    "input_set_capability": "0xd1c9e0fa",
+    "input_event": "0x2de5e237",
+    "input_mt_init_slots": "0x1489f2a2",
+    "input_mt_report_slot_state": "0x9f3ddf64",
+    "input_mt_sync_frame": "0x35b87590",
+    "msleep": "0xf9a482f9",
+    "param_ops_uint": "0x896a633e"
   },
   "export_types": {
     "strcmp": "EXPORT_SYMBOL",
@@ -100,6 +112,18 @@
     "cdev_del": "EXPORT_SYMBOL",
     "misc_deregister": "EXPORT_SYMBOL",
     "unregister_chrdev_region": "EXPORT_SYMBOL",
-    "kfree": "EXPORT_SYMBOL"
+    "kfree": "EXPORT_SYMBOL",
+    "input_allocate_device": "EXPORT_SYMBOL",
+    "input_free_device": "EXPORT_SYMBOL",
+    "input_register_device": "EXPORT_SYMBOL",
+    "input_unregister_device": "EXPORT_SYMBOL",
+    "input_set_abs_params": "EXPORT_SYMBOL",
+    "input_set_capability": "EXPORT_SYMBOL",
+    "input_event": "EXPORT_SYMBOL",
+    "input_mt_init_slots": "EXPORT_SYMBOL",
+    "input_mt_report_slot_state": "EXPORT_SYMBOL",
+    "input_mt_sync_frame": "EXPORT_SYMBOL",
+    "msleep": "EXPORT_SYMBOL",
+    "param_ops_uint": "EXPORT_SYMBOL"
   }
 }

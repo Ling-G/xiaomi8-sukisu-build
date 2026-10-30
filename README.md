@@ -6,6 +6,12 @@
 
 原有 SukiSU/SUSFS 内核构建说明见 [main 分支 README](https://github.com/Ling-G/xiaomi8-sukisu-build/blob/main/README.md)。本分支的驱动工作独立进行，不修改 main。
 
+## 屏幕点击接口（独立触屏模块）
+
+新增 `vt_touch.ko` 和原生测试程序 `vt_touch_test`，使用固定可见节点 `/dev/vt_touch`。点击模块可独立加载、卸载，不依赖原版 VT 自动调用。通过标准 Linux 输入设备 `VT Touchscreen` 发送完整单次按下/抬起；默认坐标为小米 8 自然竖屏 1080×2248。
+
+接口、自测和单次点击用法见 **[屏幕点击说明](vt-prototype/TOUCH.md)**。当前源码已实现，构建与真机状态以该说明为准。
+
 ## 已验证环境
 
 | 项目 | 已验证值 |

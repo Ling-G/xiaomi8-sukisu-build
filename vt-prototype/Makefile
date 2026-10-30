@@ -1,4 +1,5 @@
 obj-m += vt_abi_probe.o
+obj-m += vt_touch.o
 
 KDIR ?=
 ARCH ?= arm64
