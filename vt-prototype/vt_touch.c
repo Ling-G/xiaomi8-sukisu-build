@@ -102,10 +102,13 @@ static int __init vt_touch_init(void)
     vt_touch_input->id.bustype = BUS_VIRTUAL;
     vt_touch_input->id.vendor = 0x5654;
     vt_touch_input->id.product = 1;
-    vt_touch_input->id.version = 1;
+    vt_touch_input->id.version = 2;
     input_set_abs_params(vt_touch_input, ABS_MT_POSITION_X, 0, width - 1, 0, 0);
     input_set_abs_params(vt_touch_input, ABS_MT_POSITION_Y, 0, height - 1, 0, 0);
-    result = input_mt_init_slots(vt_touch_input, 1, INPUT_MT_DIRECT);
+    /* Android ignores ABS_MT_SLOT when its range is 0..0 and falls back to
+     * type A. Then unchanged axes suppressed by input core can be lost on
+     * the next contact. Advertise two slots for real protocol B, use slot 0. */
+    result = input_mt_init_slots(vt_touch_input, 2, INPUT_MT_DIRECT);
     if (result)
         goto free_input;
     result = input_register_device(vt_touch_input);
@@ -136,4 +139,4 @@ module_init(vt_touch_init);
 module_exit(vt_touch_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Visible VT touchscreen click interface for dipper 4.9");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.2");
