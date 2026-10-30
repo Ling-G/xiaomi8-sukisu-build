@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-30",
+  "device": "Xiaomi MI 8 / dipper",
+  "kernel": "4.9.186-perf-g10af704",
+  "baidu_map_version": "22.1.0 (1660)",
+  "driver_version": "0.2",
+  "driver_sha256": "4590f3439123a48331030cf624ccb2892686dd81f437dc0f032768c5a250e4e5",
+  "default_query": "开锁",
+  "default_target_prefix": "嘉悦开锁",
+  "matched_title": "嘉悦开锁换锁智能锁配汽车钥匙",
+  "full_flow": {
+    "clear_all_data_and_cache": "passed",
+    "accept_service_agreement": "passed",
+    "foreground_location_only": "passed",
+    "decline_personalized_trip_prompt": "passed",
+    "set_unicode_query_in_top_search_box": "passed",
+    "submit_search": "passed",
+    "wait_for_loaded_result_content": "passed",
+    "click_target_on_first_screen": "passed",
+    "confirm_target_detail_page": "passed",
+    "exit_code": 0
+  },
+  "missing_target_on_same_first_screen": {
+    "outcome": "not_found",
+    "stdout": "LOG 没有找到",
+    "scroll_or_pagination": false,
+    "result_clicks": 0,
+    "exit_code": 0
+  },
+  "final_state": "target detail page open; no phone call or booking performed",
+  "local_evidence": "runs/ timestamp folders; logs and screenshots are not uploaded"
+}

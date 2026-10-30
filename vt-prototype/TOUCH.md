@@ -1,8 +1,10 @@
 # 屏幕点击接口
 
+**当前版本 v0.2，已通过百度地图完整自动化流程和连续点击真机验证。** 下载 [Actions 41011378697](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/41011378697) 的 `vt-abi-probe-dipper-4.9`；源码 `ea4c073490aedca08aafada87bb7a2872aa4d17f`，模块 SHA256 为 `4590f3439123a48331030cf624ccb2892686dd81f437dc0f032768c5a250e4e5`。v0.2 将触摸槽范围声明为 0..1，仅使用槽 0，修复前次坐标不变时 Android 可能丢失坐标的问题。具体自动化结果见 [百度地图验证记录](../baidumap-test/validation.json)。
+
 点击部分编译为独立的 **`vt_touch.ko`**，与 `vt_abi_probe.ko` 一起输出。它可以单独加载、卸载，不依赖 VT 主程序或内存接口；固定控制节点 `/dev/vt_touch`、模块及输入设备始终可见。
 
-当前状态：**2026-10-30 已通过 Actions 编译和小米 8 真机测试**。测试程序经驱动点击设置首页 `(540,850)` 后，Android 进入“我的设备”；同时捕获到完整按下/抬起事件。ABI/错误参数自测、正常卸载及重新加载均通过。
+v0.1 历史验证：**2026-10-30 已通过 Actions 编译和小米 8 真机测试**。测试程序经驱动点击设置首页 `(540,850)` 后，Android 进入“我的设备”；同时捕获到完整按下/抬起事件。ABI/错误参数自测、正常卸载及重新加载均通过。
 
 已验证构建：[Actions 41008536431](https://github.com/Ling-G/xiaomi8-sukisu-build/actions/runs/41008536431)，源码提交 `b981e1e1c52060f27027e4518e941465b3eec352`。在 Artifacts 下载 `vt-abi-probe-dipper-4.9`，文件位于 `vt-probe-artifacts/`；该产物保留至 2026-11-13。
 
