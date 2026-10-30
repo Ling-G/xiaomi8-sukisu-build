@@ -1,0 +1,38 @@
+name: Build map Unicode UI helper
+on:
+  workflow_dispatch:
+  push:
+    branches: [vt-abi-probe-4.9]
+    paths:
+      - 'baidumap-test/MapUiText.java'
+      - '.github/workflows/build-map-ui-helper.yml'
+permissions:
+  contents: read
+jobs:
+  helper:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile one-shot Android shell helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          ANDROID_JAR=$(find "$SDK/platforms" -name android.jar | sort -V | tail -1)
+          D8=$(find "$SDK/build-tools" -name d8 | sort -V | tail -1)
+          test -n "$ANDROID_JAR"
+          test -x "$D8"
+          mkdir -p map-helper/classes map-helper/dex
+          javac -encoding UTF-8 --release 8 -classpath "$ANDROID_JAR" -d map-helper/classes baidumap-test/MapUiText.java
+          "$D8" --lib "$ANDROID_JAR" --min-api 29 --output map-helper/dex map-helper/classes/*.class
+          jar cf map-helper/map-ui-helper.jar -C map-helper/dex classes.dex
+          cd map-helper
+          sha256sum map-ui-helper.jar > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: map-ui-helper
+          path: |
+            map-helper/map-ui-helper.jar
+            map-helper/SHA256SUMS
+          retention-days: 14
